@@ -141,6 +141,7 @@ public class PointCloudActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         streamingThread.interrupt();
+        rsContext.close();
         super.onDestroy();
     }
 }

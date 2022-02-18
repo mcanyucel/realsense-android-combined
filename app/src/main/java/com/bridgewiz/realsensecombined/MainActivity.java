@@ -30,6 +30,11 @@ public class MainActivity extends AppCompatActivity {
             Intent pointCloudActivityIntent = new Intent(this, PointCloudActivity.class);
             this.startActivity(pointCloudActivityIntent);
         });
+
+        findViewById(R.id.btnStreamActivity).setOnClickListener(view -> {
+            Intent streamActivityIntent = new Intent(this, StreamActivity.class);
+            this.startActivity(streamActivityIntent);
+        });
     }
 
     @Override
