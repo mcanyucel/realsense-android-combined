@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RealsenseCombined">
         <activity
+            android:name=".ProcessingActivity"
+            android:exported="false" />
+        <activity
             android:name=".StreamActivity"
             android:exported="false" />
         <activity

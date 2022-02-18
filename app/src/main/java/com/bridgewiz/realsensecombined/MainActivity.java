@@ -35,6 +35,11 @@ public class MainActivity extends AppCompatActivity {
             Intent streamActivityIntent = new Intent(this, StreamActivity.class);
             this.startActivity(streamActivityIntent);
         });
+
+        findViewById(R.id.btnProcessingActivity).setOnClickListener(view -> {
+            Intent processingActivityIntent = new Intent(this, ProcessingActivity.class);
+            this.startActivity(processingActivityIntent);
+        });
     }
 
     @Override

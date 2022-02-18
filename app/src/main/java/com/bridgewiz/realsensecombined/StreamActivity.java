@@ -95,7 +95,7 @@ public class StreamActivity extends AppCompatActivity {
                 mBackgroundText.setVisibility(state ? View.VISIBLE : View.GONE));
     }
 
-    private DeviceListener mListener = new DeviceListener() {
+    private final DeviceListener mListener = new DeviceListener() {
         @Override
         public void onDeviceAttach() {
             showConnectionLabel(false);
