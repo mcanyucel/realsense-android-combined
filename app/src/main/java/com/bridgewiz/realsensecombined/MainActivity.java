@@ -40,6 +40,11 @@ public class MainActivity extends AppCompatActivity {
             Intent processingActivityIntent = new Intent(this, ProcessingActivity.class);
             this.startActivity(processingActivityIntent);
         });
+
+        findViewById(R.id.btnOpenCVStreamActivity).setOnClickListener(view -> {
+            Intent opencvStreamActivityIntent = new Intent (this, OpenCvActivity.class);
+            this.startActivity(opencvStreamActivityIntent);
+        });
     }
 
     @Override
