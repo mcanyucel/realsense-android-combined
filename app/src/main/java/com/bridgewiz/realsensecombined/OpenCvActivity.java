@@ -44,7 +44,8 @@ public class OpenCvActivity extends AppCompatActivity {
     private final DecimalFormat decimalFormat = new DecimalFormat("#.##");
     private TextView txtDistance;
     private TextView txtStatus;
-    private ImageView imgOpenCVStream;
+    private ImageView imgOpenCVStreamDepth;
+    private ImageView imgOpenCVStreamColor;
 
     private RsContext rsContext;
     private Pipeline mPipeline;
@@ -75,7 +76,8 @@ public class OpenCvActivity extends AppCompatActivity {
 
         mAppContext = getApplicationContext();
         txtDistance = findViewById(R.id.txtOpenCVDistance);
-        imgOpenCVStream = findViewById(R.id.imgOpencvStream);
+        imgOpenCVStreamDepth = findViewById(R.id.imgOpencvStreamDepth);
+        imgOpenCVStreamColor = findViewById(R.id.imgOpencvStreamColor);
         txtStatus = findViewById(R.id.txtOpencvStatus);
     }
 
@@ -139,27 +141,48 @@ public class OpenCvActivity extends AppCompatActivity {
                 try (FrameReleaser frameReleaser = new FrameReleaser()) {
                     FrameSet frameSet = mPipeline.waitForFrames().releaseWith(frameReleaser);
                     FrameSet processed = frameSet
-
                             .applyFilter(align).releaseWith(frameReleaser)
-                            .applyFilter(holeFillingFilter).releaseWith(frameReleaser)
+//                            .applyFilter(holeFillingFilter).releaseWith(frameReleaser)
                             .applyFilter(colorizer).releaseWith(frameReleaser)
                             ;
+
+                    // Acquire depth map image
                     VideoFrame depthFrame = processed.first(StreamType.DEPTH).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
-
-
-
                     Mat depthMat = new Mat(depthFrame.getHeight(), depthFrame.getWidth(), CV_8UC3);
-                    int size = (int)(depthMat.total() * depthMat.elemSize());
-                    byte[] returnBuffer = new byte[size];
+                    int sizeDepth = (int)(depthMat.total() * depthMat.elemSize());
+                    byte[] returnBuffer = new byte[sizeDepth];
                     depthFrame.getData(returnBuffer);
                     ByteBuffer.wrap(returnBuffer).order(ByteOrder.LITTLE_ENDIAN).asReadOnlyBuffer().get(returnBuffer);
                     depthMat.put(0, 0, returnBuffer);
+                    Bitmap bitmapDepth = Bitmap.createBitmap(depthMat.cols(), depthMat.rows(), Bitmap.Config.ARGB_8888);
 
-                    Bitmap bmp = Bitmap.createBitmap(depthMat.cols(), depthMat.rows(), Bitmap.Config.ARGB_8888);
+                    // Acquire color image
+                    VideoFrame colorFrame = processed.first(StreamType.COLOR).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
+//                    int sizeColor = colorFrame.getStride() * colorFrame.getHeight();
+//                    ByteBuffer colorBuffer = ByteBuffer.allocate(sizeColor);
+//                    colorFrame.getData(colorBuffer.array());
+//                    Bitmap bitmapColor = Bitmap.createBitmap(colorFrame.getWidth(), colorFrame.getHeight(), Bitmap.Config.ARGB_8888);
+//                    bitmapColor.copyPixelsFromBuffer(colorBuffer);
+
+                    Mat colorMat = new Mat(colorFrame.getHeight(), colorFrame.getWidth(), CV_8UC3);
+                    int sizeColor = (int)(colorMat.total() * colorMat.elemSize());
+                    byte[] colorBuffer = new byte[sizeColor];
+                    colorFrame.getData(colorBuffer);
+                    ByteBuffer.wrap(colorBuffer).order(ByteOrder.LITTLE_ENDIAN).asReadOnlyBuffer().get(colorBuffer);
+                    colorMat.put(0, 0, colorBuffer);
+                    Bitmap bitmapColor = Bitmap.createBitmap(colorMat.cols(), colorMat.rows(), Bitmap.Config.ARGB_8888);
+
+
+
+
 
                     try {
-                        Utils.matToBitmap(depthMat, bmp);
-                        runOnUiThread(() -> imgOpenCVStream.setImageBitmap(bmp));
+                        Utils.matToBitmap(depthMat, bitmapDepth);
+                        Utils.matToBitmap(colorMat, bitmapColor);
+                        runOnUiThread(() -> {
+                            imgOpenCVStreamDepth.setImageBitmap(bitmapDepth);
+                            imgOpenCVStreamColor.setImageBitmap(bitmapColor);
+                        });
                     }
                     catch (CvException e) {
                         Log.e(TAG, "run: conversion error", e);
@@ -176,6 +199,7 @@ public class OpenCvActivity extends AppCompatActivity {
     private void configAndStart() throws Exception {
         try (Config config = new Config()) {
             config.enableStream(StreamType.DEPTH, 640, 480);
+            config.enableStream(StreamType.COLOR, 640, 480);
             // try statement is needed here to release the resources allocated by the Pipeline::start()
             try (PipelineProfile profile = mPipeline.start()) {}
         }

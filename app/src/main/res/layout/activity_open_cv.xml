@@ -17,14 +17,27 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
-        android:id="@+id/imgOpencvStream"
+        android:id="@+id/imgOpencvStreamDepth"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="centerInside"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/txtOpenCVDistance" />
+        app:layout_constraintTop_toBottomOf="@+id/txtOpenCVDistance"
+        android:contentDescription="depthMapImage" />
+
+    <ImageView
+        android:id="@+id/imgOpencvStreamColor"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scaleType="centerInside"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/txtOpenCVDistance"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/txtOpenCVDistance"
+        android:contentDescription="depthMapImage" />
 
     <TextView
         android:id="@+id/txtOpencvStatus"
