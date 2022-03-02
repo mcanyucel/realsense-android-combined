@@ -9,4 +9,6 @@
     <string name="saving">Kaydediliyor</string>
     <string name="saved">Kaydedildi</string>
     <string name="shouldFillHoles">Boşlukları Doldur</string>
+    <string name="continuous_process">Sürekli İşle</string>
+    <string name="auto_grab_manuel_info">İşlemek için görüntüye dokunun</string>
 </resources>

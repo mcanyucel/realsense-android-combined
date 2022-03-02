@@ -6,7 +6,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -44,6 +43,11 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnOpenCVStreamActivity).setOnClickListener(view -> {
             Intent opencvStreamActivityIntent = new Intent (this, OpenCvActivity.class);
             this.startActivity(opencvStreamActivityIntent);
+        });
+
+        findViewById(R.id.btnAutoGrabCutActivity).setOnClickListener(view -> {
+            Intent autoGrabCutActivityIntent = new Intent(this, AutoGrabCut.class);
+            this.startActivity(autoGrabCutActivityIntent);
         });
     }
 
