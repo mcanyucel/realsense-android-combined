@@ -8,4 +8,5 @@
     <string name="save_record_failed">Kayıt başarısız oldu!</string>
     <string name="saving">Kaydediliyor</string>
     <string name="saved">Kaydedildi</string>
+    <string name="shouldFillHoles">Boşlukları Doldur</string>
 </resources>

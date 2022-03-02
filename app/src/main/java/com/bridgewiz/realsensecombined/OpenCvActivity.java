@@ -3,6 +3,7 @@ package com.bridgewiz.realsensecombined;
 import static org.opencv.core.CvType.CV_8UC3;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -10,7 +11,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.intel.realsense.librealsense.Align;
@@ -53,10 +56,11 @@ public class OpenCvActivity extends AppCompatActivity {
     private final Handler mHander = new Handler();
     private boolean isStreaming = false;
 
-    // required filters
+    // required filters and helpers
     private Colorizer colorizer;
     private Align align;
     private HoleFillingFilter holeFillingFilter;
+    private boolean shouldFillHoles = false;
 
 
 
@@ -79,6 +83,9 @@ public class OpenCvActivity extends AppCompatActivity {
         imgOpenCVStreamDepth = findViewById(R.id.imgOpencvStreamDepth);
         imgOpenCVStreamColor = findViewById(R.id.imgOpencvStreamColor);
         txtStatus = findViewById(R.id.txtOpencvStatus);
+
+        SwitchCompat fillHolesSwitch = findViewById(R.id.swhOpencvShouldFillHoles);
+        fillHolesSwitch.setOnCheckedChangeListener((compoundButton, b) -> shouldFillHoles = b);
     }
 
     @Override
@@ -140,11 +147,18 @@ public class OpenCvActivity extends AppCompatActivity {
             try {
                 try (FrameReleaser frameReleaser = new FrameReleaser()) {
                     FrameSet frameSet = mPipeline.waitForFrames().releaseWith(frameReleaser);
-                    FrameSet processed = frameSet
+                    FrameSet processed;
+                    if (shouldFillHoles)
+                        processed = frameSet
                             .applyFilter(align).releaseWith(frameReleaser)
-//                            .applyFilter(holeFillingFilter).releaseWith(frameReleaser)
+                            .applyFilter(holeFillingFilter).releaseWith(frameReleaser)
                             .applyFilter(colorizer).releaseWith(frameReleaser)
                             ;
+                    else
+                        processed = frameSet
+                                .applyFilter(align).releaseWith(frameReleaser)
+                                .applyFilter(colorizer).releaseWith(frameReleaser)
+                                ;
 
                     // Acquire depth map image
                     VideoFrame depthFrame = processed.first(StreamType.DEPTH).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
@@ -157,13 +171,15 @@ public class OpenCvActivity extends AppCompatActivity {
                     Bitmap bitmapDepth = Bitmap.createBitmap(depthMat.cols(), depthMat.rows(), Bitmap.Config.ARGB_8888);
 
                     // Acquire color image
-                    VideoFrame colorFrame = processed.first(StreamType.COLOR).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
+                    // this approach is not working for some reason (no error tho)
+//                    VideoFrame colorFrame = processed.first(StreamType.COLOR).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
 //                    int sizeColor = colorFrame.getStride() * colorFrame.getHeight();
 //                    ByteBuffer colorBuffer = ByteBuffer.allocate(sizeColor);
 //                    colorFrame.getData(colorBuffer.array());
 //                    Bitmap bitmapColor = Bitmap.createBitmap(colorFrame.getWidth(), colorFrame.getHeight(), Bitmap.Config.ARGB_8888);
 //                    bitmapColor.copyPixelsFromBuffer(colorBuffer);
 
+                    VideoFrame colorFrame = processed.first(StreamType.COLOR).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
                     Mat colorMat = new Mat(colorFrame.getHeight(), colorFrame.getWidth(), CV_8UC3);
                     int sizeColor = (int)(colorMat.total() * colorMat.elemSize());
                     byte[] colorBuffer = new byte[sizeColor];
