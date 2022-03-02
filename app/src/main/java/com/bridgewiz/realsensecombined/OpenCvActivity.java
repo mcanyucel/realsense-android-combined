@@ -1,20 +1,16 @@
 package com.bridgewiz.realsensecombined;
 
-import static org.opencv.core.CvType.CV_8UC3;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SwitchCompat;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
-import android.widget.CompoundButton;
 import android.widget.ImageView;
-import android.widget.Switch;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 
 import com.intel.realsense.librealsense.Align;
 import com.intel.realsense.librealsense.Colorizer;
@@ -32,12 +28,9 @@ import com.intel.realsense.librealsense.StreamType;
 import com.intel.realsense.librealsense.VideoFrame;
 
 import org.opencv.android.OpenCVLoader;
-import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.text.DecimalFormat;
 
 public class OpenCvActivity extends AppCompatActivity {
@@ -162,39 +155,14 @@ public class OpenCvActivity extends AppCompatActivity {
 
                     // Acquire depth map image
                     VideoFrame depthFrame = processed.first(StreamType.DEPTH).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
-                    Mat depthMat = new Mat(depthFrame.getHeight(), depthFrame.getWidth(), CV_8UC3);
-                    int sizeDepth = (int)(depthMat.total() * depthMat.elemSize());
-                    byte[] returnBuffer = new byte[sizeDepth];
-                    depthFrame.getData(returnBuffer);
-                    ByteBuffer.wrap(returnBuffer).order(ByteOrder.LITTLE_ENDIAN).asReadOnlyBuffer().get(returnBuffer);
-                    depthMat.put(0, 0, returnBuffer);
-                    Bitmap bitmapDepth = Bitmap.createBitmap(depthMat.cols(), depthMat.rows(), Bitmap.Config.ARGB_8888);
-
+                    Mat depthMat = CvHelpers.VideoFrame2Mat(depthFrame);
                     // Acquire color image
-                    // this approach is not working for some reason (no error tho)
-//                    VideoFrame colorFrame = processed.first(StreamType.COLOR).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
-//                    int sizeColor = colorFrame.getStride() * colorFrame.getHeight();
-//                    ByteBuffer colorBuffer = ByteBuffer.allocate(sizeColor);
-//                    colorFrame.getData(colorBuffer.array());
-//                    Bitmap bitmapColor = Bitmap.createBitmap(colorFrame.getWidth(), colorFrame.getHeight(), Bitmap.Config.ARGB_8888);
-//                    bitmapColor.copyPixelsFromBuffer(colorBuffer);
-
                     VideoFrame colorFrame = processed.first(StreamType.COLOR).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
-                    Mat colorMat = new Mat(colorFrame.getHeight(), colorFrame.getWidth(), CV_8UC3);
-                    int sizeColor = (int)(colorMat.total() * colorMat.elemSize());
-                    byte[] colorBuffer = new byte[sizeColor];
-                    colorFrame.getData(colorBuffer);
-                    ByteBuffer.wrap(colorBuffer).order(ByteOrder.LITTLE_ENDIAN).asReadOnlyBuffer().get(colorBuffer);
-                    colorMat.put(0, 0, colorBuffer);
-                    Bitmap bitmapColor = Bitmap.createBitmap(colorMat.cols(), colorMat.rows(), Bitmap.Config.ARGB_8888);
-
-
-
-
+                    Mat colorMat = CvHelpers.VideoFrame2Mat(colorFrame);
 
                     try {
-                        Utils.matToBitmap(depthMat, bitmapDepth);
-                        Utils.matToBitmap(colorMat, bitmapColor);
+                        Bitmap bitmapDepth = CvHelpers.ColorMat2BitmapNoChannelSwap(depthMat);
+                        Bitmap bitmapColor = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMat);
                         runOnUiThread(() -> {
                             imgOpenCVStreamDepth.setImageBitmap(bitmapDepth);
                             imgOpenCVStreamColor.setImageBitmap(bitmapColor);
