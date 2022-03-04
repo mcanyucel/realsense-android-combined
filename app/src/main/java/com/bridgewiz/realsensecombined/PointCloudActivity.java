@@ -7,7 +7,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.intel.realsense.librealsense.DepthFrame;
@@ -26,6 +29,7 @@ import com.intel.realsense.librealsense.StreamType;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -37,12 +41,17 @@ public class PointCloudActivity extends AppCompatActivity {
     private final DecimalFormat decimalFormat = new DecimalFormat("#.##");
     private TextView txtDistance;
     private Button btnSavePointCloud;
+    private ProgressBar pbPointCloud;
+    private TextView txtStatus;
+    private EditText edtDiameter;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH_mm_ss", Locale.US);
 
     private RsContext rsContext;
     private Pointcloud pointcloud;
 
     private boolean shouldSavePointCloud = false;
+
+    private String lastCloudFileName = "";
 
     private final Thread streamingThread = new Thread(()-> {
         try {
@@ -71,6 +80,7 @@ public class PointCloudActivity extends AppCompatActivity {
 
                 if (shouldSavePointCloud) {
                     runOnUiThread(() -> {
+                        pbPointCloud.setVisibility(View.VISIBLE);
                         txtDistance.setText("NOKTA BULUTU KAYDEDILIYOR, BU ISLEM 1 DAKIKAYA KADAR SUREBILIR");
                         btnSavePointCloud.setEnabled(false);
                     });
@@ -94,14 +104,37 @@ public class PointCloudActivity extends AppCompatActivity {
                             fileWriter.append(String.format(Locale.US, "%f,%f,%f\r\n", vertices[i], vertices[i + 1], vertices[i + 2]));
                         }
                     }
-
-
+                    lastCloudFileName = exportFile.getName();
                     shouldSavePointCloud = false;
-                    runOnUiThread(()-> btnSavePointCloud.setEnabled(true));
+                    runOnUiThread(()-> {
+                        btnSavePointCloud.setEnabled(true);
+                        pbPointCloud.setVisibility(View.GONE);
+                    });
                 }
             }
         }
         pipeline.stop();
+    }
+
+    private void saveRecord() {
+        if (lastCloudFileName.length() == 0) {
+            txtStatus.setText(R.string.no_point_cloud_saved);
+        }
+        else if (edtDiameter.getText().toString().length() == 0) {
+            txtStatus.setText(R.string.no_distance);
+        }
+        else {
+            txtStatus.setText(R.string.saving);
+            File externalDocumentsDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+            File recordsFile = new File(externalDocumentsDir, "records.csv");
+            try (FileWriter fileWriter = new FileWriter(recordsFile, true)) {
+                fileWriter.append(String.format(Locale.US, "%s,%s\r\n", lastCloudFileName, edtDiameter.getText().toString()));
+                txtStatus.setText(R.string.saved);
+            } catch (IOException e) {
+                txtStatus.setText(R.string.save_record_failed);
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -109,10 +142,16 @@ public class PointCloudActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_point_cloud);
 
-        btnSavePointCloud = (Button) findViewById(R.id.btnPointCloudSave);
-        txtDistance = (TextView)findViewById(R.id.txtPointCloudCentralDistance);
+        btnSavePointCloud = findViewById(R.id.btnPointCloudSave);
+        Button btnSaveRecord = findViewById(R.id.btnSaveRecord);
+        txtDistance = findViewById(R.id.txtPointCloudCentralDistance);
+        txtStatus = findViewById(R.id.txtStatus);
+        edtDiameter = findViewById(R.id.edtDiameter);
+        pbPointCloud = findViewById(R.id.pbSavingPointCloud);
+
 
         btnSavePointCloud.setOnClickListener(view-> shouldSavePointCloud = true);
+        btnSaveRecord.setOnClickListener(view -> saveRecord());
 
         RsContext.init(getApplicationContext());
         rsContext = new RsContext();

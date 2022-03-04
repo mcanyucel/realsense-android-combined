@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">Realsense Combined</string>
+    <string name="diameter">Çap (cm)</string>
+    <string name="saveRecord">Kaydı Sakla</string>
+    <string name="saveCloud">Nokta Bulutu Kaydet</string>
+    <string name="no_point_cloud_saved">En son nokta bulutu kaydı bulunamadı!</string>
+    <string name="no_distance">Çap değerini girin</string>
+    <string name="save_record_failed">Kayıt başarısız oldu!</string>
+    <string name="saving">Kaydediliyor</string>
+    <string name="saved">Kaydedildi</string>
+    <string name="shouldFillHoles">Boşlukları Doldur</string>
+    <string name="continuous_process">Sürekli İşle</string>
+    <string name="auto_grab_manuel_info">İşlemek için görüntüye dokunun</string>
 </resources>
