@@ -31,14 +31,10 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
 
-import java.text.DecimalFormat;
-
 public class OpenCvActivity extends AppCompatActivity {
 
     private final String TAG = "OpenCVActivity";
 
-    private final DecimalFormat decimalFormat = new DecimalFormat("#.##");
-    private TextView txtDistance;
     private TextView txtStatus;
     private ImageView imgOpenCVStreamDepth;
     private ImageView imgOpenCVStreamColor;
@@ -46,7 +42,7 @@ public class OpenCvActivity extends AppCompatActivity {
     private RsContext rsContext;
     private Pipeline mPipeline;
     private Context mAppContext;
-    private final Handler mHander = new Handler();
+    private final Handler mHandler = new Handler();
     private boolean isStreaming = false;
 
     // required filters and helpers
@@ -54,10 +50,6 @@ public class OpenCvActivity extends AppCompatActivity {
     private Align align;
     private HoleFillingFilter holeFillingFilter;
     private boolean shouldFillHoles = false;
-
-
-
-
 
 
     @Override
@@ -72,7 +64,6 @@ public class OpenCvActivity extends AppCompatActivity {
         }
 
         mAppContext = getApplicationContext();
-        txtDistance = findViewById(R.id.txtOpenCVDistance);
         imgOpenCVStreamDepth = findViewById(R.id.imgOpencvStreamDepth);
         imgOpenCVStreamColor = findViewById(R.id.imgOpencvStreamColor);
         txtStatus = findViewById(R.id.txtOpencvStatus);
@@ -98,10 +89,17 @@ public class OpenCvActivity extends AppCompatActivity {
         mPipeline.close();
     }
 
+    /**
+     * Toggles UI TextView for connection status
+     * @param state True: disconnected False: Connected
+     */
     private void showConnectionLabel(final boolean state) {
         runOnUiThread(() -> txtStatus.setVisibility(state ? View.VISIBLE : View.GONE));
     }
 
+    /**
+     * Device listener which is called on USB connection state changes
+     */
     private final DeviceListener mListener = new DeviceListener() {
         @Override
         public void onDeviceAttach() {
@@ -115,6 +113,9 @@ public class OpenCvActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Initializes the Intel camera and the required filters
+     */
     private void initRsCamera() {
         RsContext.init(mAppContext);
 
@@ -134,6 +135,9 @@ public class OpenCvActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Runnable that does the processing
+     */
     Runnable mStreaming = new Runnable() {
         @Override
         public void run() {
@@ -172,7 +176,7 @@ public class OpenCvActivity extends AppCompatActivity {
                         Log.e(TAG, "run: conversion error", e);
                     }
                 }
-                mHander.post(mStreaming);
+                mHandler.post(mStreaming);
             }
             catch (Exception e) {
                 Log.e(TAG, "Streaming error", e);
@@ -180,15 +184,23 @@ public class OpenCvActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Configures and starts Intel camera
+     * @throws Exception on initialization failure
+     */
     private void configAndStart() throws Exception {
         try (Config config = new Config()) {
             config.enableStream(StreamType.DEPTH, 640, 480);
             config.enableStream(StreamType.COLOR, 640, 480);
             // try statement is needed here to release the resources allocated by the Pipeline::start()
-            try (PipelineProfile profile = mPipeline.start()) {}
+            //noinspection EmptyTryBlock
+            try (PipelineProfile ignored = mPipeline.start()) {}
         }
     }
 
+    /**
+     * Synchronized function that starts the Intel camera
+     */
     private synchronized void startRsCamera() {
         if (isStreaming) return;
 
@@ -196,13 +208,16 @@ public class OpenCvActivity extends AppCompatActivity {
             Log.d(TAG, "startRsCamera: try start streaming");
             configAndStart();
             isStreaming = true;
-            mHander.post(mStreaming);
+            mHandler.post(mStreaming);
             Log.d(TAG, "startRsCamera: Streaming started");
         } catch (Exception e) {
             Log.e(TAG, "startRsCamera: Failed to start streaming", e);
         }
     }
 
+    /**
+     * Synchronized function that stops the Intel camera and disposes of the resources
+     */
     private synchronized void stopRsCamera() {
         if (!isStreaming) return;
 
@@ -210,7 +225,7 @@ public class OpenCvActivity extends AppCompatActivity {
             Log.d(TAG, "stopRsCamera: Try stop streaming");
 
             isStreaming = false;
-            mHander.removeCallbacks(mStreaming);
+            mHandler.removeCallbacks(mStreaming);
             mPipeline.stop();
 
             Log.d(TAG, "stopRsCamera: Streaming stopped");
@@ -219,6 +234,4 @@ public class OpenCvActivity extends AppCompatActivity {
             Log.e(TAG, "stopRsCamera: Failed to stop streaming", e);
         }
     }
-
-
 }

@@ -1,9 +1,5 @@
 package com.bridgewiz.realsensecombined;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.content.Context;
-import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -12,6 +8,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.intel.realsense.librealsense.DepthFrame;
 import com.intel.realsense.librealsense.DeviceListener;
@@ -53,6 +51,9 @@ public class PointCloudActivity extends AppCompatActivity {
 
     private String lastCloudFileName = "";
 
+    /**
+     * Thread that does the streaming
+     */
     private final Thread streamingThread = new Thread(()-> {
         try {
             stream();
@@ -62,10 +63,15 @@ public class PointCloudActivity extends AppCompatActivity {
         }
     });
 
+    /**
+     * Method that does the streaming
+     * @throws Exception RsCamera exception
+     */
     private void stream() throws Exception {
         Pipeline pipeline = new Pipeline();
         // try is required to release the resources allocated by the Pipeline::start() method
-        try (PipelineProfile pp = pipeline.start()){};
+        //noinspection EmptyTryBlock
+        try (PipelineProfile ignored = pipeline.start()){}
 
         while (!streamingThread.isInterrupted()) {
             try (FrameReleaser frameReleaser = new FrameReleaser()) {
@@ -116,6 +122,9 @@ public class PointCloudActivity extends AppCompatActivity {
         pipeline.stop();
     }
 
+    /**
+     * Saves a record to 'records.csv'
+     */
     private void saveRecord() {
         if (lastCloudFileName.length() == 0) {
             txtStatus.setText(R.string.no_point_cloud_saved);

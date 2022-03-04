@@ -5,16 +5,11 @@ import static org.opencv.core.CvType.CV_8UC3;
 import android.graphics.Bitmap;
 import android.util.Log;
 
-import com.intel.realsense.librealsense.Extension;
-import com.intel.realsense.librealsense.Frame;
-import com.intel.realsense.librealsense.StreamFormat;
 import com.intel.realsense.librealsense.VideoFrame;
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

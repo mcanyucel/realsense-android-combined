@@ -7,7 +7,7 @@ This application is for testing and demonstrating the use of Intel RealSense Dep
 This activity allows the user to save the point cloud as a csv file in the below format:
 
 ```
-x, y, x
+x, y, z
 ```
 
 The given coordinates are in meters (float). The UI does not include any streaming; it only shows the distance of the camera to the center of the depth image.
