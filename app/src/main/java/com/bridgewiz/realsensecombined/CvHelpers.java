@@ -10,6 +10,8 @@ import com.intel.realsense.librealsense.VideoFrame;
 import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -52,6 +54,17 @@ public class CvHelpers {
             Log.e(TAG, "ColorMat2BitmapNoChannelSwap: conversion error", e);
             throw e;
         }
+    }
+
+    /**
+     * Converts the given Mat from RGB to BGR, and then saves as the given file name
+     * @param path Path to save
+     * @param mat Mat instance
+     */
+    public static void SwapAndSave(final String path, final Mat mat) {
+        Mat clone = mat.clone();
+        Imgproc.cvtColor(clone, clone, Imgproc.COLOR_RGB2BGR);
+        Imgcodecs.imwrite(path, clone);
     }
 
     /**

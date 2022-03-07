@@ -5,11 +5,13 @@ import static org.opencv.core.CvType.CV_8UC1;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
@@ -41,6 +43,11 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 public class AutoGrabCut extends AppCompatActivity {
 
     private final String TAG = "AutoGrabCutActivity";
@@ -63,6 +70,9 @@ public class AutoGrabCut extends AppCompatActivity {
     private Mat elementSmall;
     private Mat elementLarge;
 
+    private String saveDirectoryPath;
+    private boolean shouldSave = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +85,13 @@ public class AutoGrabCut extends AppCompatActivity {
             finish();
         }
 
+        saveDirectoryPath = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "AutoGrabs").getPath();
+        try {
+            Files.createDirectories(Paths.get(saveDirectoryPath));
+        } catch (IOException e) {
+            Log.e(TAG, "onCreate: Failed to create image directory", e);
+        }
+
         appContext = getApplicationContext();
         imageView = findViewById(R.id.imgAutoGrabCut);
         txtStatus = findViewById(R.id.txtAutoGrabCutStatus);
@@ -85,7 +102,9 @@ public class AutoGrabCut extends AppCompatActivity {
             txtInfo.setVisibility(b ? View.INVISIBLE : View.VISIBLE);
                 
         });
-        
+
+        findViewById(R.id.fabAutoGrabSave).setOnClickListener(view -> saveImage());
+
         imageView.setOnClickListener(view -> {
             if (isStopped) {
                 isStopped = false;
@@ -141,7 +160,7 @@ public class AutoGrabCut extends AppCompatActivity {
         }
     };
 
-    // Extract Mat's outside
+    // Extract Mats outside
     Mat colorMat;
     Mat near;
     Mat far;
@@ -179,6 +198,17 @@ public class AutoGrabCut extends AppCompatActivity {
         @Override
         public void run() {
             if (isStopped) {
+                if (shouldSave) {
+                    try {
+                        String imagePath = CvHelpers.createImagePath(saveDirectoryPath, "auto");
+                        CvHelpers.SwapAndSave(imagePath, foreground);
+                        shouldSave = false;
+                        Toast.makeText(appContext, getString(R.string.saved), Toast.LENGTH_SHORT).show();
+                    }
+                    catch (Exception e) {
+                        Log.e(TAG, "run: Failed to save image", e);
+                    }
+                }
                 handler.post(mStreaming);
                 return;
             }
@@ -321,6 +351,20 @@ public class AutoGrabCut extends AppCompatActivity {
         }
         catch (Exception e) {
             Log.e(TAG, "stopRsCamera: Failed to stop streaming", e);
+        }
+    }
+
+    /**
+     * Initializes the saving sequence of the image for the next frame
+     */
+    private synchronized void saveImage() {
+        if (isContinuous)
+            Toast.makeText(appContext, getString(R.string.error_cannot_save_in_continuous), Toast.LENGTH_SHORT).show();
+        else {
+            if (isStopped)
+                shouldSave = true;
+            else
+                Toast.makeText(appContext, getString(R.string.error_cannot_save_unfrozen), Toast.LENGTH_SHORT).show();
         }
     }
 

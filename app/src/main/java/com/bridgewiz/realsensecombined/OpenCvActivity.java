@@ -32,7 +32,6 @@ import com.intel.realsense.librealsense.VideoFrame;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
-import org.opencv.imgcodecs.Imgcodecs;
 
 import java.io.File;
 import java.io.IOException;
@@ -200,8 +199,8 @@ public class OpenCvActivity extends AppCompatActivity {
                             String colorImagePath = CvHelpers.createImagePath(saveDirectory.getPath(),"color");
                             String depthImagePath = CvHelpers.createImagePath(saveDirectory.getPath(), "depth");
 
-                            Imgcodecs.imwrite(colorImagePath, colorMat);
-                            Imgcodecs.imwrite(depthImagePath, depthMat);
+                            CvHelpers.SwapAndSave(colorImagePath, colorMat);
+                            CvHelpers.SwapAndSave(depthImagePath, depthMat);
 
                             Toast.makeText(mAppContext, getString(R.string.saved), Toast.LENGTH_SHORT).show();
                         } catch (Exception e) {

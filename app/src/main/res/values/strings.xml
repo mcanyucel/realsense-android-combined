@@ -11,4 +11,7 @@
     <string name="shouldFillHoles">Boşlukları Doldur</string>
     <string name="continuous_process">Sürekli İşle</string>
     <string name="auto_grab_manuel_info">İşlemek için görüntüye dokunun</string>
+    <string name="save">kaydet</string>
+    <string name="error_cannot_save_in_continuous">Kaydetmek için sürekli moddan çıkın</string>
+    <string name="error_cannot_save_unfrozen">Kaydetmek için görüntüyü işleyin</string>
 </resources>
