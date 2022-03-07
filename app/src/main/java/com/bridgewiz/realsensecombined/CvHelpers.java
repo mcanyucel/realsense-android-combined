@@ -1,15 +1,21 @@
 package com.bridgewiz.realsensecombined;
 
+import static org.opencv.core.CvType.CV_16UC1;
+import static org.opencv.core.CvType.CV_16UC3;
+import static org.opencv.core.CvType.CV_32FC1;
+import static org.opencv.core.CvType.CV_8UC1;
 import static org.opencv.core.CvType.CV_8UC3;
 
 import android.graphics.Bitmap;
 import android.util.Log;
 
+import com.intel.realsense.librealsense.DepthFrame;
 import com.intel.realsense.librealsense.VideoFrame;
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -38,6 +44,23 @@ public class CvHelpers {
         frameMat.put(0,0, dataBuffer);
         return frameMat;
     }
+
+    /**
+     * Converts an 16 bit Z16 type depth frame to CV_16UC1 Mat instance
+     * @param frame Depth frame instance (16 bit Z16 type)
+     * @return Mat instance (CV_16UC1)
+     */
+    public static Mat DepthFrame2Mat(final DepthFrame frame) {
+        Mat frameMat = new Mat(frame.getHeight(), frame.getWidth(), CV_16UC1);
+        final int bufferSize = (int)(frameMat.total() * frameMat.elemSize());
+        byte[] dataBuffer = new byte[bufferSize];
+        short[] s = new short[dataBuffer.length / 2];
+        frame.getData(dataBuffer);
+        ByteBuffer.wrap(dataBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s);
+        frameMat.put(0,0, s);
+        return frameMat;
+    }
+
 
     /**
      * Converts the given OpenCV Mat to Android.graphics.Bitmap

@@ -49,6 +49,11 @@ public class MainActivity extends AppCompatActivity {
             Intent autoGrabCutActivityIntent = new Intent(this, AutoGrabCut.class);
             this.startActivity(autoGrabCutActivityIntent);
         });
+
+        findViewById(R.id.btnCentralGrabCutActivity).setOnClickListener(view -> {
+            Intent centralGrabCutActivityIntent = new Intent(this, CentralGrabCutActivity.class);
+            this.startActivity(centralGrabCutActivityIntent);
+        });
     }
 
     @Override
