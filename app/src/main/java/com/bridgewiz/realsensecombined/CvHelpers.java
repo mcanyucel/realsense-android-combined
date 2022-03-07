@@ -13,10 +13,14 @@ import org.opencv.core.Mat;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class CvHelpers {
 
     private static final String TAG = "CvHelpers";
+    private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss", Locale.US);
 
     /**
      * Converts the given libsense VideoFrame (not DepthFrame) to OpenCV Mat.
@@ -48,5 +52,16 @@ public class CvHelpers {
             Log.e(TAG, "ColorMat2BitmapNoChannelSwap: conversion error", e);
             throw e;
         }
+    }
+
+    /**
+     * Creates a path in the external app storage to save an image.
+     * @param directory External image directory path
+     * @param suffix String that will be appended to image file name
+     * @return Full path to save the image
+     */
+    public static String createImagePath(String directory, String suffix) {
+        String timeString = simpleDateFormat.format(new Date());
+        return String.format("%s/%s-%s.jpg", directory, timeString, suffix);
     }
 }

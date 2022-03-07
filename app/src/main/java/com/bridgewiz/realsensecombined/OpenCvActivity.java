@@ -3,11 +3,13 @@ package com.bridgewiz.realsensecombined;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
@@ -30,6 +32,11 @@ import com.intel.realsense.librealsense.VideoFrame;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 
 public class OpenCvActivity extends AppCompatActivity {
 
@@ -51,6 +58,9 @@ public class OpenCvActivity extends AppCompatActivity {
     private HoleFillingFilter holeFillingFilter;
     private boolean shouldFillHoles = false;
 
+    private File saveDirectory;
+    private boolean shouldSaveImage = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,8 +78,17 @@ public class OpenCvActivity extends AppCompatActivity {
         imgOpenCVStreamColor = findViewById(R.id.imgOpencvStreamColor);
         txtStatus = findViewById(R.id.txtOpencvStatus);
 
+        saveDirectory = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "DepthMaps");
+
+        try {
+            Files.createDirectories(saveDirectory.toPath());
+        } catch (IOException e) {
+            Log.e(TAG, "onCreate: Failed to create photo directory", e);
+        }
+
         SwitchCompat fillHolesSwitch = findViewById(R.id.swhOpencvShouldFillHoles);
         fillHolesSwitch.setOnCheckedChangeListener((compoundButton, b) -> shouldFillHoles = b);
+        imgOpenCVStreamDepth.setOnClickListener(view -> saveImages());
     }
 
     @Override
@@ -175,6 +194,21 @@ public class OpenCvActivity extends AppCompatActivity {
                     catch (CvException e) {
                         Log.e(TAG, "run: conversion error", e);
                     }
+
+                    if (shouldSaveImage) {
+                        try {
+                            String colorImagePath = CvHelpers.createImagePath(saveDirectory.getPath(),"color");
+                            String depthImagePath = CvHelpers.createImagePath(saveDirectory.getPath(), "depth");
+
+                            Imgcodecs.imwrite(colorImagePath, colorMat);
+                            Imgcodecs.imwrite(depthImagePath, depthMat);
+
+                            Toast.makeText(mAppContext, getString(R.string.saved), Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Log.e(TAG, "run: Failed to save images", e);
+                        }
+                        shouldSaveImage = false;
+                    }
                 }
                 mHandler.post(mStreaming);
             }
@@ -233,5 +267,12 @@ public class OpenCvActivity extends AppCompatActivity {
         catch (Exception e) {
             Log.e(TAG, "stopRsCamera: Failed to stop streaming", e);
         }
+    }
+
+    /**
+     * Initializes the saving sequence of next color and depth frame
+     */
+    private synchronized void saveImages() {
+        shouldSaveImage = true;
     }
 }
