@@ -41,3 +41,13 @@ It also includes an optional hole filling filter and an always-on align filter.
 This activity follows the C++ sample given by Intel to apply Grab-Cut algorithm for removing the background, on an Android device. 
 
 It has slight difference implementations, such as using `Core.compare` instead of `==`, since operator overloading of `Mat` is not available on Android. 
+
+## CentralGrabCutActivity
+
+This activity modifies the AutoGrabCutActivity such that the foreground is determined by the distance of the central pixel. Instead of setting the foreground as the depth pixels having values greater than 180 (i.e. closest objects), the pixels in the neighborhood of the central pixel in the grayscale depth image is used. 
+
+The central real-world distance and its grayscale depth image (8 bpp) pixel value counterpart are used to find the 8 bit neighborhood that will constitute the near and far borders splitting the background and the foreground. The diameter that defines the foreground is assumed to be 0.5 meters, and parameterized as `maxExpectedDiameter`. This value is converted to pixel (8 bit) value by comparing the real world depth (obtained from the `DepthFrame`) and pixel depth (obtained from grayscale depth image).
+
+Unlike the `AutoGrabActivity`, the `ProbablyForeground` mask of the `GrabCut` algorithm is neglected since it caused bad segmentation in the tests.
+
+The application can save the images creating in the intermediate steps of the algorithm. 
