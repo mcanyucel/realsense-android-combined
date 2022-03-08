@@ -18,4 +18,5 @@
     <string name="depth_image">depth image</string>
     <string name="waiting_for_connection">Bağlantı bekleniyor</string>
     <string name="central_grab_cut">Merkezi Grab Cut</string>
+    <string name="distance_mask">Mesafe Maskesi</string>
 </resources>
