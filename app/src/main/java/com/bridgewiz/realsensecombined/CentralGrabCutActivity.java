@@ -409,6 +409,7 @@ public class CentralGrabCutActivity extends AppCompatActivity {
     private synchronized void processImage() {
         if (isFrozen) {
             isFrozen = false;
+            imageViewForeground.setImageDrawable(null);
         }
         else {
             shouldProcess = true;

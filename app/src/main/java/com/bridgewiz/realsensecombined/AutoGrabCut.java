@@ -108,6 +108,7 @@ public class AutoGrabCut extends AppCompatActivity {
         imageView.setOnClickListener(view -> {
             if (isStopped) {
                 isStopped = false;
+                imageView.setImageDrawable(null);
             }
             else {
                 shouldProcess = true;
