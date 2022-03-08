@@ -50,4 +50,14 @@ The central real-world distance and its grayscale depth image (8 bpp) pixel valu
 
 Unlike the `AutoGrabActivity`, the `ProbablyForeground` mask of the `GrabCut` algorithm is neglected since it caused bad segmentation in the tests.
 
-The application can save the images creating in the intermediate steps of the algorithm. 
+The application can save the images creating in the intermediate steps of the algorithm.
+
+The processing of a single image is unusably slow, taking around 10 seconds per frame.
+
+## DistanceMaskActivity
+
+This activity achieves to obtain the same output of the Grab-Cut algorithm with much less computing power. It uses the ratio of the central pixel distance (depth) in real world and depth image to calculate a threshold for near and far boundaries, and uses these borders to mask out the foreground and background.
+
+It obtains the real world depth from the `DepthFrame`, the pixel depth from the depth image created by a grayscale `Colorizer` and an `Align` filter, and calculates the pixel value of 0.5 meters as the delta distance. Any pixels that are greater or lower than central pixel distance +/- delta distance are masked out from the original `Frame` using OpenCV `Mat` constructor which accepts an existing `Mat` instance and a mask instance (of type `Mat`). The near and far masks are created with `Core.compare(...)`, `Core.bitwise_x()` functions because operator overloading (`==, ||, &&, !`) is not available in Java OpenCV API.
+
+The speed increase compared to the central grab-cut algorithm is immense, increasing from 0.1 fps to around 1-1.2 fps.

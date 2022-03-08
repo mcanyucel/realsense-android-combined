@@ -54,6 +54,11 @@ public class MainActivity extends AppCompatActivity {
             Intent centralGrabCutActivityIntent = new Intent(this, CentralGrabCutActivity.class);
             this.startActivity(centralGrabCutActivityIntent);
         });
+
+        findViewById(R.id.btnDistanceMaskActivity).setOnClickListener(view -> {
+            Intent distanceMaskActivityIntent = new Intent(this, DistanceMaskActivity.class);
+            this.startActivity(distanceMaskActivityIntent);
+        });
     }
 
     @Override
