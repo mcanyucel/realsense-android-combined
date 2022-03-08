@@ -1,13 +1,12 @@
 package com.bridgewiz.realsensecombined;
 
 import static org.opencv.core.CvType.CV_16UC1;
-import static org.opencv.core.CvType.CV_16UC3;
-import static org.opencv.core.CvType.CV_32FC1;
-import static org.opencv.core.CvType.CV_8UC1;
 import static org.opencv.core.CvType.CV_8UC3;
 
 import android.graphics.Bitmap;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
 
 import com.intel.realsense.librealsense.DepthFrame;
 import com.intel.realsense.librealsense.VideoFrame;
@@ -15,7 +14,6 @@ import com.intel.realsense.librealsense.VideoFrame;
 import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
-import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -31,11 +29,12 @@ public class CvHelpers {
     private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss", Locale.US);
 
     /**
-     * Converts the given libsense VideoFrame (not DepthFrame) to OpenCV Mat.
+     * Converts the given lib-sense VideoFrame (not DepthFrame) to OpenCV Mat.
      * @param frame VideoFrame instance
      * @return Mat instance (CV_8UC3)
      */
-    public static Mat VideoFrame2Mat(final VideoFrame frame) {
+    @NonNull
+    public static Mat VideoFrame2Mat(@NonNull final VideoFrame frame) {
         Mat frameMat = new Mat(frame.getHeight(), frame.getWidth(), CV_8UC3);
         final int bufferSize = (int)(frameMat.total() * frameMat.elemSize());
         byte[] dataBuffer = new byte[bufferSize];
@@ -50,7 +49,8 @@ public class CvHelpers {
      * @param frame Depth frame instance (16 bit Z16 type)
      * @return Mat instance (CV_16UC1)
      */
-    public static Mat DepthFrame2Mat(final DepthFrame frame) {
+    @NonNull
+    public static Mat DepthFrame2Mat(@NonNull final DepthFrame frame) {
         Mat frameMat = new Mat(frame.getHeight(), frame.getWidth(), CV_16UC1);
         final int bufferSize = (int)(frameMat.total() * frameMat.elemSize());
         byte[] dataBuffer = new byte[bufferSize];
@@ -67,7 +67,7 @@ public class CvHelpers {
      * @param mat Mat instance (should be 8UC3)
      * @return Bitmap instance (ARGB_8888)
      */
-    public static Bitmap ColorMat2BitmapNoChannelSwap(final Mat mat) throws CvException {
+    public static Bitmap ColorMat2BitmapNoChannelSwap(@NonNull final Mat mat) throws CvException {
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         try {
             Utils.matToBitmap(mat, bitmap);
@@ -84,7 +84,7 @@ public class CvHelpers {
      * @param path Path to save
      * @param mat Mat instance
      */
-    public static void SwapAndSave(final String path, final Mat mat) {
+    public static void SwapAndSave(final String path, @NonNull final Mat mat) {
         Mat clone = mat.clone();
         Imgproc.cvtColor(clone, clone, Imgproc.COLOR_RGB2BGR);
         Imgcodecs.imwrite(path, clone);
@@ -96,6 +96,7 @@ public class CvHelpers {
      * @param suffix String that will be appended to image file name
      * @return Full path to save the image
      */
+    @NonNull
     public static String createImagePath(String directory, String suffix) {
         String timeString = simpleDateFormat.format(new Date());
         return String.format("%s/%s-%s.jpg", directory, timeString, suffix);

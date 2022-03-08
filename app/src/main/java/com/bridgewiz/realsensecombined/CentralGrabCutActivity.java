@@ -268,8 +268,6 @@ public class CentralGrabCutActivity extends AppCompatActivity {
                         createMaskFromDepth(near, thresholdNear, Imgproc.THRESH_BINARY);
 
                         far = bwDepthMatMaster.clone();
-//                        Core.compare(far, new Scalar(0), zeroMask, Core.CMP_EQ);
-//                        far.setTo(new Scalar(255), zeroMask);
                         createMaskFromDepth(far, thresholdFar, Imgproc.THRESH_BINARY_INV);
 
                         // combine near and far backgrounds

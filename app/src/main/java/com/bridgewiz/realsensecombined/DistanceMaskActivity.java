@@ -1,7 +1,5 @@
 package com.bridgewiz.realsensecombined;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -11,6 +9,8 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.intel.realsense.librealsense.Align;
 import com.intel.realsense.librealsense.Colorizer;
@@ -35,13 +35,11 @@ import org.opencv.core.CvException;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.Locale;
@@ -68,9 +66,6 @@ public class DistanceMaskActivity extends AppCompatActivity {
     private Align align;
 
     private String saveDirectoryPath;
-
-    private Mat elementSmall;
-    private Mat elementLarge;
 
     private final DecimalFormat decimalFormat = new DecimalFormat("#.##");
 
@@ -101,7 +96,6 @@ public class DistanceMaskActivity extends AppCompatActivity {
         imageViewColor.setOnClickListener(view -> processImage());
         imageViewForeground.setOnClickListener(view -> saveImage());
 
-        createMorphElements();
         initializeMats();
     }
 
@@ -153,7 +147,6 @@ public class DistanceMaskActivity extends AppCompatActivity {
     };
 
     private Mat colorMat;
-    private Mat bwDepthMatMaster;
     private Mat nearMask;
     private Mat farMask;
     private Mat combinedMask;
@@ -204,7 +197,7 @@ public class DistanceMaskActivity extends AppCompatActivity {
                         colorizer.setValue(Option.COLOR_SCHEME, 2);
                         Frame bwDepthFrame = depthFrame.applyFilter(colorizer).releaseWith(frameReleaser);
 
-                        bwDepthMatMaster = CvHelpers.VideoFrame2Mat(bwDepthFrame.as(Extension.VIDEO_FRAME));
+                        Mat bwDepthMatMaster = CvHelpers.VideoFrame2Mat(bwDepthFrame.as(Extension.VIDEO_FRAME));
                         Imgproc.cvtColor(bwDepthMatMaster, bwDepthMatMaster, Imgproc.COLOR_BGR2GRAY);
 
                         // depth value of the center in the grayscale 8 bit depth image
@@ -347,42 +340,4 @@ public class DistanceMaskActivity extends AppCompatActivity {
             shouldProcess = true;
         }
     }
-
-    //region Image Processing
-
-    /**
-     * Creates the required morphological operation elements
-     */
-    private void createMorphElements() {
-        final int erosionSize = 3;
-        elementSmall = createElement(erosionSize);
-        elementLarge = createElement(erosionSize * 2);
-    }
-
-    /**
-     * Creates a generic square morphological operation element
-     * @param elementSize One side of square element
-     * @return The square element
-     */
-    private Mat createElement(int elementSize) {
-        return Imgproc.getStructuringElement(
-                Imgproc.MORPH_RECT,
-                new Size(elementSize + 1, elementSize + 1),
-                new Point(elementSize, elementSize)
-        );
-    }
-
-    /**
-     * Converts the given depth image (Mat) into a mask image
-     * @param depth Depth image of type Mat
-     * @param thresh Threshold value
-     * @param threshType Threshold type
-     */
-    private void createMaskFromDepth(Mat depth, double thresh, int threshType) {
-        Imgproc.threshold(depth, depth, thresh, 255, threshType);
-        Imgproc.dilate(depth, depth, elementSmall);
-        Imgproc.erode(depth, depth, elementLarge);
-    }
-
-    //endregion
 }
