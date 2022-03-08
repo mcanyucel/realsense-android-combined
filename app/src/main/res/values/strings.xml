@@ -11,4 +11,11 @@
     <string name="shouldFillHoles">Boşlukları Doldur</string>
     <string name="continuous_process">Sürekli İşle</string>
     <string name="auto_grab_manuel_info">İşlemek için görüntüye dokunun</string>
+    <string name="save">kaydet</string>
+    <string name="error_cannot_save_in_continuous">Kaydetmek için sürekli moddan çıkın</string>
+    <string name="error_cannot_save_unfrozen">Kaydetmek için görüntüyü işleyin</string>
+    <string name="color_image">color image</string>
+    <string name="depth_image">depth image</string>
+    <string name="waiting_for_connection">Bağlantı bekleniyor</string>
+    <string name="central_grab_cut">Merkezi Grab Cut</string>
 </resources>

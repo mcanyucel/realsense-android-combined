@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RealsenseCombined">
         <activity
+            android:name=".CentralGrabCutActivity"
+            android:exported="false" />
+        <activity
             android:name=".AutoGrabCut"
             android:exported="false" />
         <activity

@@ -2,18 +2,19 @@ package com.bridgewiz.realsensecombined;
 
 import static org.opencv.core.CvType.CV_8UC1;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SwitchCompat;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
-import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 
 import com.intel.realsense.librealsense.Align;
 import com.intel.realsense.librealsense.Colorizer;
@@ -40,8 +41,12 @@ import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class AutoGrabCut extends AppCompatActivity {
 
@@ -65,7 +70,8 @@ public class AutoGrabCut extends AppCompatActivity {
     private Mat elementSmall;
     private Mat elementLarge;
 
-
+    private String saveDirectoryPath;
+    private boolean shouldSave = false;
 
 
     @Override
@@ -79,6 +85,13 @@ public class AutoGrabCut extends AppCompatActivity {
             finish();
         }
 
+        saveDirectoryPath = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "AutoGrabs").getPath();
+        try {
+            Files.createDirectories(Paths.get(saveDirectoryPath));
+        } catch (IOException e) {
+            Log.e(TAG, "onCreate: Failed to create image directory", e);
+        }
+
         appContext = getApplicationContext();
         imageView = findViewById(R.id.imgAutoGrabCut);
         txtStatus = findViewById(R.id.txtAutoGrabCutStatus);
@@ -89,7 +102,9 @@ public class AutoGrabCut extends AppCompatActivity {
             txtInfo.setVisibility(b ? View.INVISIBLE : View.VISIBLE);
                 
         });
-        
+
+        findViewById(R.id.fabAutoGrabSave).setOnClickListener(view -> saveImage());
+
         imageView.setOnClickListener(view -> {
             if (isStopped) {
                 isStopped = false;
@@ -121,10 +136,17 @@ public class AutoGrabCut extends AppCompatActivity {
         pipeline.close();
     }
 
+    /**
+     * Toggles UI TextView for connection status
+     * @param state True: disconnected False: Connected
+     */
     private void showConnectionLabel(final boolean state) {
         runOnUiThread(()->txtStatus.setVisibility(state ? View.VISIBLE : View.GONE));
     }
 
+    /**
+     * Device listener which is called on USB connection state changes
+     */
     private final DeviceListener mListener = new DeviceListener() {
         @Override
         public void onDeviceAttach() {
@@ -138,7 +160,7 @@ public class AutoGrabCut extends AppCompatActivity {
         }
     };
 
-    // Extract Mat's outside
+    // Extract Mats outside
     Mat colorMat;
     Mat near;
     Mat far;
@@ -153,6 +175,9 @@ public class AutoGrabCut extends AppCompatActivity {
     Mat gcPrFgdMask;
     Mat gcCombinedFgMask;
 
+    /**
+     * Initializes Mat objects used in processing
+     */
     private void initializeMats() {
         zeroMask = new Mat();
         mask = new Mat();
@@ -166,10 +191,24 @@ public class AutoGrabCut extends AppCompatActivity {
         gcCombinedFgMask = new Mat();
     }
 
+    /**
+     * Runnable that does the processing
+     */
     Runnable mStreaming = new Runnable() {
         @Override
         public void run() {
             if (isStopped) {
+                if (shouldSave) {
+                    try {
+                        String imagePath = CvHelpers.createImagePath(saveDirectoryPath, "auto");
+                        CvHelpers.SwapAndSave(imagePath, foreground);
+                        shouldSave = false;
+                        Toast.makeText(appContext, getString(R.string.saved), Toast.LENGTH_SHORT).show();
+                    }
+                    catch (Exception e) {
+                        Log.e(TAG, "run: Failed to save image", e);
+                    }
+                }
                 handler.post(mStreaming);
                 return;
             }
@@ -179,11 +218,8 @@ public class AutoGrabCut extends AppCompatActivity {
                     FrameSet processedFrameSet = frameSet
                             .applyFilter(align).releaseWith(frameReleaser);
 
-
                     VideoFrame colorFrame = processedFrameSet.first(StreamType.COLOR).releaseWith(frameReleaser).as(Extension.VIDEO_FRAME);
                     colorMat = CvHelpers.VideoFrame2Mat(colorFrame);
-
-
 
                     if (!isContinuous && !shouldProcess) {
                         Bitmap colorBitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMat);
@@ -218,8 +254,6 @@ public class AutoGrabCut extends AppCompatActivity {
                         mask.setTo(Scalar.all(Imgproc.GC_FGD), maskFGD);
 
                         // Run Grab-Cut
-
-
                         Imgproc.grabCut(colorMat, mask, new Rect(), bgModel, fgModel, 1, Imgproc.GC_INIT_WITH_MASK);
 
                         // Extract foreground pixel based on the refined mask from the grab-cut
@@ -251,18 +285,25 @@ public class AutoGrabCut extends AppCompatActivity {
                 Log.e(TAG, "run: Streaming error", e);
             }
         }
-
     };
 
+    /**
+     * Configures and starts Intel camera
+     * @throws Exception on initialization failure
+     */
     private void configAndStart() throws Exception {
         try (Config config = new Config()) {
             config.enableStream(StreamType.DEPTH, 640, 480);
             config.enableStream(StreamType.COLOR, 640, 480);
             // try statement is needed here to release the resources by the Pipeline::start()
-            try (PipelineProfile profile = pipeline.start()) {}
+            //noinspection EmptyTryBlock
+            try (PipelineProfile ignored = pipeline.start()) {}
         }
     }
 
+    /**
+     * Initializes the Intel camera
+     */
     private void initRsCamera() {
         RsContext.init(appContext);
 
@@ -281,6 +322,9 @@ public class AutoGrabCut extends AppCompatActivity {
 
     }
 
+    /**
+     * Synchronized function that starts the Intel camera
+     */
     private synchronized void startRsCamera() {
         if (isStreaming) return;
 
@@ -294,6 +338,9 @@ public class AutoGrabCut extends AppCompatActivity {
         }
     }
 
+    /**
+     * Synchronized function that stops the Intel camera and disposes of the resources
+     */
     private synchronized void stopRsCamera() {
         if (!isStreaming) return;
 
@@ -307,14 +354,35 @@ public class AutoGrabCut extends AppCompatActivity {
         }
     }
 
-    //region Image Processing
-    private final int erosionSize = 3;
+    /**
+     * Initializes the saving sequence of the image for the next frame
+     */
+    private synchronized void saveImage() {
+        if (isContinuous)
+            Toast.makeText(appContext, getString(R.string.error_cannot_save_in_continuous), Toast.LENGTH_SHORT).show();
+        else {
+            if (isStopped)
+                shouldSave = true;
+            else
+                Toast.makeText(appContext, getString(R.string.error_cannot_save_unfrozen), Toast.LENGTH_SHORT).show();
+        }
+    }
 
+    //region Image Processing
+    /**
+     * Creates the required morphological operation elements
+     */
     private void createMorphElements() {
+        final int erosionSize = 3;
         elementSmall = createElement(erosionSize);
         elementLarge = createElement(erosionSize * 2);
     }
 
+    /**
+     * Creates a generic square morphological operation element
+     * @param elementSize One side of square element
+     * @return The square element
+     */
     private Mat createElement(int elementSize) {
         return Imgproc.getStructuringElement(
                 Imgproc.MORPH_RECT,
@@ -323,13 +391,17 @@ public class AutoGrabCut extends AppCompatActivity {
         );
     }
 
-
+    /**
+     * Converts the given depth image (Mat) into a mask image
+     * @param depth Depth image of type Mat
+     * @param thresh Threshold value
+     * @param threshType Threshold type
+     */
     private void createMaskFromDepth(Mat depth, double thresh, int threshType) {
         Imgproc.threshold(depth, depth, thresh, 255, threshType);
         Imgproc.dilate(depth, depth, elementSmall);
         Imgproc.erode(depth, depth, elementLarge);
     }
-
 
     //endregion
 }

@@ -15,7 +15,6 @@ import com.intel.realsense.librealsense.Config;
 import com.intel.realsense.librealsense.DecimationFilter;
 import com.intel.realsense.librealsense.DeviceList;
 import com.intel.realsense.librealsense.DeviceListener;
-import com.intel.realsense.librealsense.Extension;
 import com.intel.realsense.librealsense.Frame;
 import com.intel.realsense.librealsense.FrameReleaser;
 import com.intel.realsense.librealsense.FrameSet;
@@ -24,7 +23,6 @@ import com.intel.realsense.librealsense.HoleFillingFilter;
 import com.intel.realsense.librealsense.Option;
 import com.intel.realsense.librealsense.Pipeline;
 import com.intel.realsense.librealsense.PipelineProfile;
-import com.intel.realsense.librealsense.Pointcloud;
 import com.intel.realsense.librealsense.RsContext;
 import com.intel.realsense.librealsense.SpatialFilter;
 import com.intel.realsense.librealsense.StreamFormat;
@@ -51,7 +49,6 @@ public class ProcessingActivity extends AppCompatActivity {
     private Colorizer mColorizerProcessed;
     private DecimationFilter mDecimationFilter;
     private HoleFillingFilter mHoleFillingFilter;
-    private Pointcloud mPointcloud;
     private TemporalFilter mTemporalFilter;
     private ThresholdFilter mThresholdFilter;
     private SpatialFilter mSpatialFilter;
@@ -106,6 +103,9 @@ public class ProcessingActivity extends AppCompatActivity {
         mPipeline.close();
     }
 
+    /**
+     * Initializes the Intel camera and all the required filters
+     */
     private void init(){
         //RsContext.init must be called once in the application lifetime before any interaction with physical RealSense devices.
         //For multi activities applications use the application context instead of the activity context
@@ -123,7 +123,6 @@ public class ProcessingActivity extends AppCompatActivity {
         mColorizerProcessed = new Colorizer();
         mDecimationFilter = new DecimationFilter();
         mHoleFillingFilter = new HoleFillingFilter();
-        mPointcloud = new Pointcloud();
         mTemporalFilter = new TemporalFilter();
         mThresholdFilter = new ThresholdFilter();
         mSpatialFilter = new SpatialFilter();
@@ -142,16 +141,18 @@ public class ProcessingActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Toggles UI TextView for connection status
+     * @param state True: disconnected False: Connected
+     */
     private void showConnectLabel(final boolean state){
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mBackgroundText.setVisibility(state ? View.VISIBLE : View.GONE);
-            }
-        });
+        runOnUiThread(() -> mBackgroundText.setVisibility(state ? View.VISIBLE : View.GONE));
     }
 
-    private DeviceListener mListener = new DeviceListener() {
+    /**
+     * Device listener which is called on USB connection state changes
+     */
+    private final DeviceListener mListener = new DeviceListener() {
         @Override
         public void onDeviceAttach() {
             showConnectLabel(false);
@@ -164,6 +165,9 @@ public class ProcessingActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Runnable that does the processing
+     */
     Runnable mStreaming = new Runnable() {
         @Override
         public void run() {
@@ -193,16 +197,24 @@ public class ProcessingActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Configures and starts Intel camera
+     * @throws Exception on initialization failure
+     */
     private void configAndStart() throws Exception {
         try(Config config  = new Config())
         {
             config.enableStream(StreamType.DEPTH, 640, 480);
             config.enableStream(StreamType.COLOR, 640, 480);
             // try statement needed here to release resources allocated by the Pipeline:start() method
-            try(PipelineProfile pp = mPipeline.start(config)){}
+            //noinspection EmptyTryBlock
+            try(PipelineProfile ignored = mPipeline.start(config)){}
         }
     }
 
+    /**
+     * Synchronized function that starts the Intel camera
+     */
     private synchronized void start() {
         if(mIsStreaming)
             return;
@@ -219,6 +231,9 @@ public class ProcessingActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Synchronized function that stops the Intel camera and disposes of the resources
+     */
     private synchronized void stop() {
         if(!mIsStreaming)
             return;

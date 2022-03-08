@@ -1,27 +1,34 @@
 package com.bridgewiz.realsensecombined;
 
+import static org.opencv.core.CvType.CV_16UC1;
+import static org.opencv.core.CvType.CV_16UC3;
+import static org.opencv.core.CvType.CV_32FC1;
+import static org.opencv.core.CvType.CV_8UC1;
 import static org.opencv.core.CvType.CV_8UC3;
 
 import android.graphics.Bitmap;
 import android.util.Log;
 
-import com.intel.realsense.librealsense.Extension;
-import com.intel.realsense.librealsense.Frame;
-import com.intel.realsense.librealsense.StreamFormat;
+import com.intel.realsense.librealsense.DepthFrame;
 import com.intel.realsense.librealsense.VideoFrame;
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class CvHelpers {
 
     private static final String TAG = "CvHelpers";
+    private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss", Locale.US);
 
     /**
      * Converts the given libsense VideoFrame (not DepthFrame) to OpenCV Mat.
@@ -39,6 +46,23 @@ public class CvHelpers {
     }
 
     /**
+     * Converts an 16 bit Z16 type depth frame to CV_16UC1 Mat instance
+     * @param frame Depth frame instance (16 bit Z16 type)
+     * @return Mat instance (CV_16UC1)
+     */
+    public static Mat DepthFrame2Mat(final DepthFrame frame) {
+        Mat frameMat = new Mat(frame.getHeight(), frame.getWidth(), CV_16UC1);
+        final int bufferSize = (int)(frameMat.total() * frameMat.elemSize());
+        byte[] dataBuffer = new byte[bufferSize];
+        short[] s = new short[dataBuffer.length / 2];
+        frame.getData(dataBuffer);
+        ByteBuffer.wrap(dataBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s);
+        frameMat.put(0,0, s);
+        return frameMat;
+    }
+
+
+    /**
      * Converts the given OpenCV Mat to Android.graphics.Bitmap
      * @param mat Mat instance (should be 8UC3)
      * @return Bitmap instance (ARGB_8888)
@@ -53,5 +77,27 @@ public class CvHelpers {
             Log.e(TAG, "ColorMat2BitmapNoChannelSwap: conversion error", e);
             throw e;
         }
+    }
+
+    /**
+     * Converts the given Mat from RGB to BGR, and then saves as the given file name
+     * @param path Path to save
+     * @param mat Mat instance
+     */
+    public static void SwapAndSave(final String path, final Mat mat) {
+        Mat clone = mat.clone();
+        Imgproc.cvtColor(clone, clone, Imgproc.COLOR_RGB2BGR);
+        Imgcodecs.imwrite(path, clone);
+    }
+
+    /**
+     * Creates a path in the external app storage to save an image.
+     * @param directory External image directory path
+     * @param suffix String that will be appended to image file name
+     * @return Full path to save the image
+     */
+    public static String createImagePath(String directory, String suffix) {
+        String timeString = simpleDateFormat.format(new Date());
+        return String.format("%s/%s-%s.jpg", directory, timeString, suffix);
     }
 }

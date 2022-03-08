@@ -74,6 +74,9 @@ public class StreamActivity extends AppCompatActivity {
         mPipeline.close();
     }
 
+    /**
+     * Initializes the Intel camera and the required filters
+     */
     private void init() {
         RsContext.init(mAppContext);
 
@@ -90,11 +93,18 @@ public class StreamActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Toggles UI TextView for connection status
+     * @param state True: disconnected False: Connected
+     */
     private void showConnectionLabel(final boolean state) {
         runOnUiThread(() ->
                 mBackgroundText.setVisibility(state ? View.VISIBLE : View.GONE));
     }
 
+    /**
+     * Device listener which is called on USB connection state changes
+     */
     private final DeviceListener mListener = new DeviceListener() {
         @Override
         public void onDeviceAttach() {
@@ -108,6 +118,9 @@ public class StreamActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Runnable that does the processing
+     */
     Runnable mStreaming = new Runnable() {
         @Override
         public void run() {
@@ -124,15 +137,23 @@ public class StreamActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Configures and starts Intel camera
+     * @throws Exception on initialization failure
+     */
     private void configAndStart() throws Exception {
         try (Config config = new Config()) {
             config.enableStream(StreamType.DEPTH, 640, 480);
             config.enableStream(StreamType.COLOR, 640, 480);
             // try statement needed here to release resources allocated by the Pipeline::start() method
-            try (PipelineProfile pp = mPipeline.start(config)) {}
+            //noinspection EmptyTryBlock
+            try (PipelineProfile ignored = mPipeline.start(config)) {}
         }
     }
 
+    /**
+     * Synchronized function that starts the Intel camera
+     */
     private synchronized void start() {
         if (mIsStreaming) return;
 
@@ -148,6 +169,9 @@ public class StreamActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Synchronized function that stops the Intel camera and disposes of the resources
+     */
     private synchronized void stop() {
         if (!mIsStreaming) return;
 

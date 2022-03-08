@@ -3,11 +3,13 @@ package com.bridgewiz.realsensecombined;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
@@ -31,14 +33,14 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
 
-import java.text.DecimalFormat;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 
 public class OpenCvActivity extends AppCompatActivity {
 
     private final String TAG = "OpenCVActivity";
 
-    private final DecimalFormat decimalFormat = new DecimalFormat("#.##");
-    private TextView txtDistance;
     private TextView txtStatus;
     private ImageView imgOpenCVStreamDepth;
     private ImageView imgOpenCVStreamColor;
@@ -46,7 +48,7 @@ public class OpenCvActivity extends AppCompatActivity {
     private RsContext rsContext;
     private Pipeline mPipeline;
     private Context mAppContext;
-    private final Handler mHander = new Handler();
+    private final Handler mHandler = new Handler();
     private boolean isStreaming = false;
 
     // required filters and helpers
@@ -55,9 +57,8 @@ public class OpenCvActivity extends AppCompatActivity {
     private HoleFillingFilter holeFillingFilter;
     private boolean shouldFillHoles = false;
 
-
-
-
+    private File saveDirectory;
+    private boolean shouldSaveImage = false;
 
 
     @Override
@@ -72,13 +73,21 @@ public class OpenCvActivity extends AppCompatActivity {
         }
 
         mAppContext = getApplicationContext();
-        txtDistance = findViewById(R.id.txtOpenCVDistance);
         imgOpenCVStreamDepth = findViewById(R.id.imgOpencvStreamDepth);
         imgOpenCVStreamColor = findViewById(R.id.imgOpencvStreamColor);
         txtStatus = findViewById(R.id.txtOpencvStatus);
 
+        saveDirectory = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "DepthMaps");
+
+        try {
+            Files.createDirectories(saveDirectory.toPath());
+        } catch (IOException e) {
+            Log.e(TAG, "onCreate: Failed to create photo directory", e);
+        }
+
         SwitchCompat fillHolesSwitch = findViewById(R.id.swhOpencvShouldFillHoles);
         fillHolesSwitch.setOnCheckedChangeListener((compoundButton, b) -> shouldFillHoles = b);
+        imgOpenCVStreamDepth.setOnClickListener(view -> saveImages());
     }
 
     @Override
@@ -98,10 +107,17 @@ public class OpenCvActivity extends AppCompatActivity {
         mPipeline.close();
     }
 
+    /**
+     * Toggles UI TextView for connection status
+     * @param state True: disconnected False: Connected
+     */
     private void showConnectionLabel(final boolean state) {
         runOnUiThread(() -> txtStatus.setVisibility(state ? View.VISIBLE : View.GONE));
     }
 
+    /**
+     * Device listener which is called on USB connection state changes
+     */
     private final DeviceListener mListener = new DeviceListener() {
         @Override
         public void onDeviceAttach() {
@@ -115,6 +131,9 @@ public class OpenCvActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Initializes the Intel camera and the required filters
+     */
     private void initRsCamera() {
         RsContext.init(mAppContext);
 
@@ -134,6 +153,9 @@ public class OpenCvActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Runnable that does the processing
+     */
     Runnable mStreaming = new Runnable() {
         @Override
         public void run() {
@@ -171,8 +193,23 @@ public class OpenCvActivity extends AppCompatActivity {
                     catch (CvException e) {
                         Log.e(TAG, "run: conversion error", e);
                     }
+
+                    if (shouldSaveImage) {
+                        try {
+                            String colorImagePath = CvHelpers.createImagePath(saveDirectory.getPath(),"color");
+                            String depthImagePath = CvHelpers.createImagePath(saveDirectory.getPath(), "depth");
+
+                            CvHelpers.SwapAndSave(colorImagePath, colorMat);
+                            CvHelpers.SwapAndSave(depthImagePath, depthMat);
+
+                            Toast.makeText(mAppContext, getString(R.string.saved), Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Log.e(TAG, "run: Failed to save images", e);
+                        }
+                        shouldSaveImage = false;
+                    }
                 }
-                mHander.post(mStreaming);
+                mHandler.post(mStreaming);
             }
             catch (Exception e) {
                 Log.e(TAG, "Streaming error", e);
@@ -180,15 +217,23 @@ public class OpenCvActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Configures and starts Intel camera
+     * @throws Exception on initialization failure
+     */
     private void configAndStart() throws Exception {
         try (Config config = new Config()) {
             config.enableStream(StreamType.DEPTH, 640, 480);
             config.enableStream(StreamType.COLOR, 640, 480);
             // try statement is needed here to release the resources allocated by the Pipeline::start()
-            try (PipelineProfile profile = mPipeline.start()) {}
+            //noinspection EmptyTryBlock
+            try (PipelineProfile ignored = mPipeline.start()) {}
         }
     }
 
+    /**
+     * Synchronized function that starts the Intel camera
+     */
     private synchronized void startRsCamera() {
         if (isStreaming) return;
 
@@ -196,13 +241,16 @@ public class OpenCvActivity extends AppCompatActivity {
             Log.d(TAG, "startRsCamera: try start streaming");
             configAndStart();
             isStreaming = true;
-            mHander.post(mStreaming);
+            mHandler.post(mStreaming);
             Log.d(TAG, "startRsCamera: Streaming started");
         } catch (Exception e) {
             Log.e(TAG, "startRsCamera: Failed to start streaming", e);
         }
     }
 
+    /**
+     * Synchronized function that stops the Intel camera and disposes of the resources
+     */
     private synchronized void stopRsCamera() {
         if (!isStreaming) return;
 
@@ -210,7 +258,7 @@ public class OpenCvActivity extends AppCompatActivity {
             Log.d(TAG, "stopRsCamera: Try stop streaming");
 
             isStreaming = false;
-            mHander.removeCallbacks(mStreaming);
+            mHandler.removeCallbacks(mStreaming);
             mPipeline.stop();
 
             Log.d(TAG, "stopRsCamera: Streaming stopped");
@@ -220,5 +268,10 @@ public class OpenCvActivity extends AppCompatActivity {
         }
     }
 
-
+    /**
+     * Initializes the saving sequence of next color and depth frame
+     */
+    private synchronized void saveImages() {
+        shouldSaveImage = true;
+    }
 }
