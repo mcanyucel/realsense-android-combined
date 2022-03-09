@@ -146,7 +146,7 @@ public class StreamActivity extends AppCompatActivity {
             config.enableStream(StreamType.DEPTH, 640, 480);
             config.enableStream(StreamType.COLOR, 640, 480);
             // try statement needed here to release resources allocated by the Pipeline::start() method
-            //noinspection EmptyTryBlock
+            //noinspection EmptyTryBlocked
             try (PipelineProfile ignored = mPipeline.start(config)) {}
         }
     }
