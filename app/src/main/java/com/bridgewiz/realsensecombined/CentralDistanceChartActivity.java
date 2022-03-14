@@ -1,5 +1,8 @@
 package com.bridgewiz.realsensecombined;
 
+import static org.opencv.core.CvType.CV_8UC1;
+import static org.opencv.core.CvType.CV_8UC3;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -13,16 +16,13 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.intel.realsense.librealsense.Align;
-import com.intel.realsense.librealsense.Colorizer;
 import com.intel.realsense.librealsense.Config;
 import com.intel.realsense.librealsense.DepthFrame;
 import com.intel.realsense.librealsense.DeviceList;
 import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.Extension;
-import com.intel.realsense.librealsense.Frame;
 import com.intel.realsense.librealsense.FrameReleaser;
 import com.intel.realsense.librealsense.FrameSet;
-import com.intel.realsense.librealsense.Option;
 import com.intel.realsense.librealsense.Pipeline;
 import com.intel.realsense.librealsense.PipelineProfile;
 import com.intel.realsense.librealsense.RsContext;
@@ -30,9 +30,9 @@ import com.intel.realsense.librealsense.StreamType;
 import com.intel.realsense.librealsense.VideoFrame;
 
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Core;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
@@ -42,14 +42,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
-public class DistanceMaskActivity extends AppCompatActivity {
+public class CentralDistanceChartActivity extends AppCompatActivity {
 
-    private final String TAG = "DistanceMaskActivity";
+    private final String TAG = "CentralDistanceChartActivity";
 
     private ImageView imageViewColor;
-    private ImageView imageViewForeground;
+    private ImageView imageViewChart;
     private TextView txtStatus;
 
     private RsContext rsContext;
@@ -58,11 +61,9 @@ public class DistanceMaskActivity extends AppCompatActivity {
     private final Handler handler = new Handler();
 
     private boolean isStreaming = false;
-    private boolean shouldProcess = false;
     private boolean isFrozen = false;
     private boolean shouldSave = false;
 
-    private Colorizer colorizer;
     private Align align;
 
     private String saveDirectoryPath;
@@ -72,7 +73,7 @@ public class DistanceMaskActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_distance_mask);
+        setContentView(R.layout.activity_central_distance_chart);
 
         // initialize OpenCV
         if (!OpenCVLoader.initDebug()) {
@@ -80,7 +81,7 @@ public class DistanceMaskActivity extends AppCompatActivity {
             finish();
         }
 
-        saveDirectoryPath = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "DistanceMasks").getPath();
+        saveDirectoryPath = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "CentralDistanceChart").getPath();
 
         try {
             Files.createDirectories(Paths.get(saveDirectoryPath));
@@ -89,12 +90,12 @@ public class DistanceMaskActivity extends AppCompatActivity {
         }
 
         appContext = getApplicationContext();
-        imageViewColor = findViewById(R.id.imgDistanceMaskColor);
-        imageViewForeground = findViewById(R.id.imgDistanceMaskForeground);
-        txtStatus = findViewById(R.id.txtDistanceMaskDistance);
+        imageViewColor = findViewById(R.id.imgCentralDistanceChartColor);
+        imageViewChart = findViewById(R.id.imgCentralDistanceChartChart);
+        txtStatus = findViewById(R.id.txtCentralDistanceChartDistance);
 
-        imageViewColor.setOnClickListener(view -> processImage());
-        imageViewForeground.setOnClickListener(view -> saveImage());
+        imageViewColor.setOnClickListener(view -> freezeImage());
+        imageViewChart.setOnClickListener(view -> saveImage());
 
         initializeMats();
     }
@@ -113,9 +114,9 @@ public class DistanceMaskActivity extends AppCompatActivity {
         if (rsContext != null)
             rsContext.close();
 
-        colorizer.close();
         pipeline.close();
         align.close();
+
     }
 
     /**
@@ -148,15 +149,13 @@ public class DistanceMaskActivity extends AppCompatActivity {
     };
 
     private Mat colorMat;
-    private Mat nearMask;
-    private Mat farMask;
-    private Mat combinedMask;
-    private Mat foreground;
+    private Mat chartMat;
+
+    List<MatOfPoint> points = new ArrayList<>();
+
 
     private void initializeMats() {
-        farMask = new Mat();
-        nearMask = new Mat();
-        combinedMask = new Mat();
+
     }
 
     private final Runnable mStreaming = new Runnable() {
@@ -164,14 +163,15 @@ public class DistanceMaskActivity extends AppCompatActivity {
         public void run() {
             if (isFrozen) {
                 if (shouldSave) {
-                    CvHelpers.SwapAndSave(CvHelpers.createImagePath(saveDirectoryPath, "original"), colorMat);
-                    CvHelpers.SwapAndSave(CvHelpers.createImagePath(saveDirectoryPath, "foreground"), foreground);
+                    CvHelpers.SwapAndSave(CvHelpers.createImagePath(saveDirectoryPath, "color"), colorMat);
+                    CvHelpers.Save(CvHelpers.createImagePath(saveDirectoryPath, "chart"), chartMat);
                     shouldSave = false;
                     Toast.makeText(appContext, getString(R.string.saved), Toast.LENGTH_SHORT).show();
                 }
                 handler.post(mStreaming);
                 return;
             }
+
             try {
                 try (FrameReleaser frameReleaser = new FrameReleaser()) {
                     FrameSet frameSet = pipeline.waitForFrames().releaseWith(frameReleaser);
@@ -181,7 +181,6 @@ public class DistanceMaskActivity extends AppCompatActivity {
                             .first(StreamType.COLOR)
                             .releaseWith(frameReleaser)
                             .as(Extension.VIDEO_FRAME);
-
                     colorMat = CvHelpers.VideoFrame2Mat(colorFrame);
 
                     DepthFrame depthFrame = processedFrameSet
@@ -189,66 +188,72 @@ public class DistanceMaskActivity extends AppCompatActivity {
                             .releaseWith(frameReleaser)
                             .as(Extension.DEPTH_FRAME);
 
+                    int depthWidth = depthFrame.getWidth();
+                    int halfDepthHeight = depthFrame.getHeight() / 2;
+
+
                     // get the depth at the center in meters
-                    float distance = depthFrame.getDistance(depthFrame.getWidth()/2, depthFrame.getHeight()/2);
-                    updateStatusText(String.format(Locale.US, "Mesafe: %s metre", decimalFormat.format(distance)));
+                    float centralDistance = depthFrame.getDistance(depthWidth / 2, halfDepthHeight);
+                    updateStatusText(String.format(Locale.US, "Mesafe: %s metre", decimalFormat.format(centralDistance)));
 
-                    if (shouldProcess) {
-                        // get grayscale depth image
-                        colorizer.setValue(Option.COLOR_SCHEME, 2);
-                        Frame bwDepthFrame = depthFrame.applyFilter(colorizer).releaseWith(frameReleaser);
+                    // create central depth chart
 
-                        Mat bwDepthMatMaster = CvHelpers.VideoFrame2Mat(bwDepthFrame.as(Extension.VIDEO_FRAME));
-                        Imgproc.cvtColor(bwDepthMatMaster, bwDepthMatMaster, Imgproc.COLOR_BGR2GRAY);
-
-                        // depth value of the center in the grayscale 8 bit depth image
-                        double du = bwDepthMatMaster.get(bwDepthMatMaster.rows() / 2, bwDepthMatMaster.cols() / 2)[0];
-                        // the differential value; any values different than center +- delta/2 will be erased
-
-                        double maxExpectedDiameter = 0.5; // meters
-                        double delta = du * maxExpectedDiameter / distance / 2;
-
-                        double thresholdFar = du - delta;
-                        double thresholdNear = du + delta;
-
-                        Log.d(TAG, String.format("run: far %s near %s", thresholdFar, thresholdNear));
-
-                        // We need {!(near OR far)} which is equal to {!near AND !far}, which is shorter
-                        // This is the reason CMP_GT and CMP_LT are in reverse
-                        Core.compare(bwDepthMatMaster, Scalar.all(thresholdFar), farMask, Core.CMP_GT);
-                        Core.compare(bwDepthMatMaster, Scalar.all(thresholdNear), nearMask, Core.CMP_LT);
-
-                        Core.bitwise_and(farMask, nearMask, combinedMask);
-
-
-                        foreground = new Mat();
-                        colorMat.copyTo(foreground, combinedMask);
-
-                        try {
-                            Bitmap bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(foreground);
-                            runOnUiThread(()-> imageViewForeground.setImageBitmap(bitmap));
-                            shouldProcess = false;
-                            isFrozen = true;
-                        } catch (CvException e) {
-                            Log.e(TAG, "run: Conversion error", e);
-                        }
-
+                    // get mid-height distance values
+                    ArrayList<Float> distanceList = new ArrayList<>(depthWidth);
+                    for (int i = 0; i < depthWidth; i++) {
+                        distanceList.add(depthFrame.getDistance(i, halfDepthHeight));
                     }
 
+                    float maxDistance = (float) Collections.max(distanceList);
+                    // assume 10 px margin at chart top, left, and right
+                    int chartHeight = 600;
+                    float scaleY = (chartHeight - 10) / maxDistance;
+                    int chartWidth = 800;
+                    float scaleX = (chartWidth - 20) / ((float) depthWidth);
+
+                    chartMat = new Mat(chartHeight, chartWidth, CV_8UC3);
+                    chartMat.setTo(Scalar.all(255));
+                    points.clear();
+                    MatOfPoint polyline = new MatOfPoint();
+
+                    List<Point> polyLinePoints = new ArrayList<>(depthWidth);
+                    List<MatOfPoint> polyLinePointsList = new ArrayList<>(1);
+
+                    for (int i = 0; i < depthWidth; i++) {
+                        float d = distanceList.get(i);
+                        polyLinePoints.add(new Point(10 + i * scaleX, (chartHeight - 10) - d * scaleY));
+                    }
+
+                    polyline.fromList(polyLinePoints);
+                    polyLinePointsList.add(polyline);
+                    Imgproc.polylines(chartMat, polyLinePointsList, false, Scalar.all(0),2);
+                    Imgproc.line(chartMat, new Point(chartWidth / 2.0, 0), new Point(chartWidth / 2.0, chartHeight), new Scalar(255, 0, 0), 4);
+
+                    try {
+                        Bitmap chartBitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(chartMat);
+                        runOnUiThread(() -> imageViewChart.setImageBitmap(chartBitmap));
+                    } catch (CvException cve) {
+                        Log.e(TAG, "run: Conversion error on chart", cve);
+                    }
 
                     // draw cross-hair
-                    int rows = colorMat.rows();
-                    int cols = colorMat.cols();
-                    Imgproc.line(colorMat, new Point(0, rows/2f), new Point(cols, rows/2f), new Scalar(255,0,0), 3);
-                    Imgproc.line(colorMat, new Point(cols/2f, 0), new Point(cols/2f, rows), new Scalar(255,0,0), 3);
-                    Bitmap colorBitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMat);
-                    runOnUiThread(() -> imageViewColor.setImageBitmap(colorBitmap));
+                    try  {
+                        int rows = colorMat.rows();
+                        int cols = colorMat.cols();
+                        Imgproc.line(colorMat, new Point(0, rows/2f), new Point(cols, rows/2f), new Scalar(255,0,0), 3);
+                        Imgproc.line(colorMat, new Point(cols/2f, 0), new Point(cols/2f, rows), new Scalar(255,0,0), 3);
+                        Bitmap colorBitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMat);
+                        runOnUiThread(() -> imageViewColor.setImageBitmap(colorBitmap));
+                    } catch (CvException cve) {
+                        Log.e(TAG, "run: Conversion error on color", cve);
+                    }
                 }
                 handler.post(mStreaming);
             }
             catch (Exception e) {
                 Log.e(TAG, "run: Streaming error", e);
             }
+
         }
     };
 
@@ -275,7 +280,6 @@ public class DistanceMaskActivity extends AppCompatActivity {
         rsContext = new RsContext();
         rsContext.setDevicesChangedCallback(deviceListener);
         pipeline = new Pipeline();
-        colorizer = new Colorizer();
         align = new Align(StreamType.COLOR);
 
         try (DeviceList list = rsContext.queryDevices()) {
@@ -330,15 +334,11 @@ public class DistanceMaskActivity extends AppCompatActivity {
     }
 
     /**
-     * If the system is in frozen state, resumes streaming, otherwise initializes processing
+     * Toggles frozen status
      */
-    private synchronized void processImage() {
-        if (isFrozen) {
-            isFrozen = false;
-            imageViewForeground.setImageDrawable(null);
-        }
-        else {
-            shouldProcess = true;
+    private synchronized void freezeImage() {
+        if (isStreaming) {
+            isFrozen = !isFrozen;
         }
     }
 }

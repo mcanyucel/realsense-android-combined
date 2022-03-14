@@ -91,6 +91,15 @@ public class CvHelpers {
     }
 
     /**
+     * Saves the given mat to the given file path without any processing
+     * @param path Path to save
+     * @param mat Mat instance
+     */
+    public static void Save(final String path, @NonNull final Mat mat) {
+        Imgcodecs.imwrite(path, mat);
+    }
+
+    /**
      * Creates a path in the external app storage to save an image.
      * @param directory External image directory path
      * @param suffix String that will be appended to image file name
