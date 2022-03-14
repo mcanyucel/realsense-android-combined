@@ -61,3 +61,9 @@ This activity achieves to obtain the same output of the Grab-Cut algorithm with 
 It obtains the real world depth from the `DepthFrame`, the pixel depth from the depth image created by a grayscale `Colorizer` and an `Align` filter, and calculates the pixel value of 0.5 meters as the delta distance. Any pixels that are greater or lower than central pixel distance +/- delta distance are masked out from the original `Frame` using OpenCV `Mat` constructor which accepts an existing `Mat` instance and a mask instance (of type `Mat`). The near and far masks are created with `Core.compare(...)`, `Core.bitwise_x()` functions because operator overloading (`==, ||, &&, !`) is not available in Java OpenCV API.
 
 The speed increase compared to the central grab-cut algorithm is immense, increasing from 0.1 fps to around 1-1.2 fps.
+
+## CentralDistanceChartActivity
+
+This activity achieves to obtain the line chart that exhibits the distance values along the x axis (horizontal) on the mid-height of the depth image. It displays the `COLOR` stream and the depth chart on the UI. 
+
+The chart is drawn using OpenCV as an image using the `polylines` function.
