@@ -19,4 +19,5 @@
     <string name="waiting_for_connection">Bağlantı bekleniyor</string>
     <string name="central_grab_cut">Merkezi Grab Cut</string>
     <string name="distance_mask">Mesafe Maskesi</string>
+    <string name="central_distance_chart">Orta Mesafe Grafiği</string>
 </resources>

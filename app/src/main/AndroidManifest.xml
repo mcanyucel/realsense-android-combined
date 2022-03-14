@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RealsenseCombined">
         <activity
+            android:name=".CentralDistanceChartActivity"
+            android:exported="false" />
+        <activity
             android:name=".DistanceMaskActivity"
             android:exported="false" />
         <activity
