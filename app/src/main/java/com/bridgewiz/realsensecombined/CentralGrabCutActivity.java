@@ -119,6 +119,7 @@ public class CentralGrabCutActivity extends AppCompatActivity {
         if (rsContext != null)
             rsContext.close();
         colorizer.close();
+        align.close();
         pipeline.close();
     }
 

@@ -127,7 +127,7 @@ public class DistanceMaskActivity extends AppCompatActivity {
     }
 
     /**
-     * Updates teh text on the status view with the given string resource id
+     * Updates the text on the status view with the given string resource id
      * @param resId Resource id
      */
     private void updateStatusText(int resId) {

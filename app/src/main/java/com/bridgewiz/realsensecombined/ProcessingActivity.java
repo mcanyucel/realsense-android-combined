@@ -248,8 +248,15 @@ public class ProcessingActivity extends AppCompatActivity {
         }  catch (Exception e) {
             Log.d(TAG, "failed to stop streaming");
             mPipeline = null;
-            mColorizerOrg.close();
-            mColorizerProcessed.close();
         }
+
+        mColorizerOrg.close();
+        mColorizerProcessed.close();
+        mAlign.close();
+        mTemporalFilter.close();
+        mSpatialFilter.close();
+        mDecimationFilter.close();
+        mHoleFillingFilter.close();
+        mThresholdFilter.close();
     }
 }

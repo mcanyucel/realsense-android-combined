@@ -133,6 +133,7 @@ public class AutoGrabCut extends AppCompatActivity {
 
         if (rsContext != null)
             rsContext.close();
+        align.close();
         colorizer.close();
         pipeline.close();
     }

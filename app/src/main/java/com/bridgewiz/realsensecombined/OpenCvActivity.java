@@ -103,6 +103,8 @@ public class OpenCvActivity extends AppCompatActivity {
 
         if (rsContext != null)
             rsContext.close();
+        align.close();
+        holeFillingFilter.close();
         colorizer.close();
         mPipeline.close();
     }
