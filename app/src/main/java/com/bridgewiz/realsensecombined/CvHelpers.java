@@ -26,7 +26,10 @@ import java.util.Locale;
 public class CvHelpers {
 
     private static final String TAG = "CvHelpers";
-    private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss", Locale.US);
+    /**
+     * The date formatter used to format dates in creating file names.
+     */
+    public static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss", Locale.US);
 
     /**
      * Converts the given lib-sense VideoFrame (not DepthFrame) to OpenCV Mat.
@@ -100,7 +103,9 @@ public class CvHelpers {
     }
 
     /**
-     * Creates a path in the external app storage to save an image.
+     * Creates a path in the external app storage to save an image. The image name
+     * template is < yyyy-MM-dd HH-mm-ss > - < suffix >.jpg, where the time string is
+     * the time of calling the function
      * @param directory External image directory path
      * @param suffix String that will be appended to image file name
      * @return Full path to save the image
@@ -108,6 +113,21 @@ public class CvHelpers {
     @NonNull
     public static String createImagePath(String directory, String suffix) {
         String timeString = simpleDateFormat.format(new Date());
+        return String.format("%s/%s-%s.jpg", directory, timeString, suffix);
+    }
+
+    /**
+     * Creates a path in the external app storage to save an image. The image name
+     * template is < yyyy-MM-dd HH-mm-ss > - < suffix >.jpg, where the time string is
+     * based on the given date
+     * @param directory External image directory path
+     * @param suffix String that will be appended to the image file name
+     * @param date Date for the base of image file name
+     * @return Full path to save the image
+     */
+    @NonNull
+    public static String createImagePath(String directory, String suffix, Date date) {
+        String timeString = simpleDateFormat.format(date);
         return String.format("%s/%s-%s.jpg", directory, timeString, suffix);
     }
 }

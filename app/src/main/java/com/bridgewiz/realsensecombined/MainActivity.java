@@ -64,6 +64,11 @@ public class MainActivity extends AppCompatActivity {
             Intent centralDistanceChartActivityIntent = new Intent(this, CentralDistanceChartActivity.class);
             this.startActivity(centralDistanceChartActivityIntent);
         });
+
+        findViewById(R.id.btnMaskAndCloudActivity).setOnClickListener(view -> {
+            Intent maskAndCloudActivityIntent = new Intent(this, MaskAndCloudActivity.class);
+            this.startActivity(maskAndCloudActivityIntent);
+        });
     }
 
     @Override

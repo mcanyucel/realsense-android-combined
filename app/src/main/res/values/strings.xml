@@ -20,4 +20,13 @@
     <string name="central_grab_cut">Merkezi Grab Cut</string>
     <string name="distance_mask">Mesafe Maskesi</string>
     <string name="central_distance_chart">Orta Mesafe Grafiği</string>
+    <string name="distance">Mesafe (m)</string>
+    <string name="distance_with_placeholder">Mesafe (m): %1$f</string>
+    <string name="diameter_with_placeholder">Çap (cm): %1$f</string>
+    <string name="two_diameters_with_placeholders">Çap (cm) A1: %1$f A2:%1$f</string>
+    <string name="color_image_foreground">Foreground</string>
+    <string name="mask_and_cloud">Mesafe Maskesi + Nokta Bulutu</string>
+    <string name="failed_to_find_tree_edge">Ağaç kenarı bulunamadı!</string>
+    <string name="waiting_for_process">Ölçmek için fotoğrafa tıklayın</string>
+    <string name="saved_with_placeholder">%1$s kaydedildi</string>
 </resources>
