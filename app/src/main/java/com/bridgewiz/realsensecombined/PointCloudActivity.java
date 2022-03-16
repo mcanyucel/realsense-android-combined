@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -17,6 +18,7 @@ import com.intel.realsense.librealsense.Extension;
 import com.intel.realsense.librealsense.Frame;
 import com.intel.realsense.librealsense.FrameReleaser;
 import com.intel.realsense.librealsense.FrameSet;
+import com.intel.realsense.librealsense.GLRsSurfaceView;
 import com.intel.realsense.librealsense.Pipeline;
 import com.intel.realsense.librealsense.PipelineProfile;
 import com.intel.realsense.librealsense.Pointcloud;
@@ -24,6 +26,7 @@ import com.intel.realsense.librealsense.Points;
 import com.intel.realsense.librealsense.RsContext;
 import com.intel.realsense.librealsense.StreamFormat;
 import com.intel.realsense.librealsense.StreamType;
+import com.intel.realsense.librealsense.VideoFrame;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -42,6 +45,7 @@ public class PointCloudActivity extends AppCompatActivity {
     private ProgressBar pbPointCloud;
     private TextView txtStatus;
     private EditText edtDiameter;
+    private GLRsSurfaceView imgStream;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH_mm_ss", Locale.US);
 
     private RsContext rsContext;
@@ -83,7 +87,7 @@ public class PointCloudActivity extends AppCompatActivity {
                 final float centralDepth = depthFrame.getDistance(depthFrame.getWidth() / 2, depthFrame.getHeight() / 2);
                 Log.d(TAG, String.format("Depth frame size: %sx%s", depthFrame.getWidth(), depthFrame.getHeight()));
                 runOnUiThread(() -> txtDistance.setText("Kamera Ortasi Mesafe: " + decimalFormat.format(centralDepth)));
-
+                imgStream.upload(frameSet);
                 if (shouldSavePointCloud) {
                     runOnUiThread(() -> {
                         pbPointCloud.setVisibility(View.VISIBLE);
@@ -157,6 +161,7 @@ public class PointCloudActivity extends AppCompatActivity {
         txtStatus = findViewById(R.id.txtStatus);
         edtDiameter = findViewById(R.id.edtDiameter);
         pbPointCloud = findViewById(R.id.pbSavingPointCloud);
+        imgStream = findViewById(R.id.imgPointCloudColor);
 
 
         btnSavePointCloud.setOnClickListener(view-> shouldSavePointCloud = true);
