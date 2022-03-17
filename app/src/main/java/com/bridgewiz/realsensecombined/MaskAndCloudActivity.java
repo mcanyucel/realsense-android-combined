@@ -257,7 +257,6 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                         foregroundMat = new Mat();
                         colorMat.copyTo(foregroundMat, combinedMask);
 
-                        // dev: verify point cloud and depth image values
                         FrameSet frameSetPointCloud = processedFrameSet.applyFilter(pointcloud).releaseWith(frameReleaser);
                         Frame pointCloudFrame = frameSetPointCloud
                                 .first(StreamType.DEPTH, StreamFormat.XYZ32F)
@@ -310,6 +309,13 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                                 break;
                             }
                         }
+
+                        // draw the diameter line onto the foreground mat
+                        Imgproc.line(foregroundMat,
+                                new Point(leftIndex, centerY),
+                                new Point(rightIndex, centerY),
+                                new Scalar(255, 0, 0),
+                                4);
 
                         int vertexYIndex = centerY * depthFrame.getWidth();
 
