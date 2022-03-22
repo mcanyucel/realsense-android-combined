@@ -254,6 +254,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                     String lastFileName = CvHelpers.createImagePath(saveDirectoryPathImage, "original", date);
                     CvHelpers.SwapAndSave(lastFileName, colorMat);
                     CvHelpers.SwapAndSave(CvHelpers.createImagePath(saveDirectoryPathImage, "foreground", date), foregroundMat);
+                    CvHelpers.SwapAndSave(CvHelpers.createImagePath(saveDirectoryPathImage, "edges", date), colorMatWithBorders);
                     saveRecord(CvHelpers.simpleDateFormat.format(date), lastDistance);
 
                     shouldSave = false;
