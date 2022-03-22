@@ -75,6 +75,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
     private boolean isFrozen = false;
     private boolean shouldSave = false;
     private boolean shouldFillHoles = false;
+    private boolean isCurrentForeground = false;
 
     private Align align;
     private Pointcloud pointcloud;
@@ -150,6 +151,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
         });
 
         ((Button)findViewById(R.id.btnMaskAndCloudSave)).setOnClickListener(view -> saveImage());
+        ((Button)findViewById(R.id.btnMaskAndCloudToggle)).setOnClickListener(view -> toggleResultImage());
 
 
         initializeMats();
@@ -229,7 +231,11 @@ public class MaskAndCloudActivity extends AppCompatActivity {
     private Mat farMask;
     private Mat nearMask;
     private Mat combinedMask;
+    private Mat colorMatWithBorders;
 
+    /**
+     * Initializes the Mats that need to be instantiated before any calls.
+     */
     private void initializeMats() {
         farMask = new Mat();
         nearMask = new Mat();
@@ -269,7 +275,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
 
                     colorMat = CvHelpers.VideoFrame2Mat(colorFrame);
 
-                    Mat colorMatWithBorders = colorMat.clone();
+                    colorMatWithBorders = colorMat.clone();
 
 
                     // get the depth at the center in meters
@@ -495,10 +501,13 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                         }
 
                         try {
+                            Bitmap bitmap;
+                            if (isCurrentForeground)
+                                bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(foregroundMat);
+                            else
+                                bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMatWithBorders);
 
-                            Bitmap bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMatWithBorders);
                             runOnUiThread(()->imageViewColor.setImageBitmap(bitmap));
-
 
                             shouldProcess = false;
                             isFrozen = true;
@@ -524,6 +533,26 @@ public class MaskAndCloudActivity extends AppCompatActivity {
             }
         }
     };
+
+    /**
+     * Toggles the result image between the foreground image and the color stream with
+     * edges drawn onto it.
+     * When called in unfrozen state, does nothing.
+     */
+    private void toggleResultImage() {
+        if (!isFrozen)
+            return;
+
+        Bitmap bitmap;
+        if (isCurrentForeground) {
+            bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMatWithBorders);
+        }
+        else {
+            bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(foregroundMat);
+        }
+        runOnUiThread(()->imageViewColor.setImageBitmap(bitmap));
+        isCurrentForeground = !isCurrentForeground;
+    }
 
     /**
      * Saves the last measurement into records.csv in the activity-specific folder
@@ -561,6 +590,9 @@ public class MaskAndCloudActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Initializes the Intel camera
+     */
     private void initRsCamera() {
         RsContext.init(appContext);
 
