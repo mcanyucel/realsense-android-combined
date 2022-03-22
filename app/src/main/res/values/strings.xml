@@ -29,4 +29,9 @@
     <string name="failed_to_find_tree_edge">Ağaç kenarı bulunamadı!</string>
     <string name="waiting_for_process">Ölçmek için fotoğrafa tıklayın</string>
     <string name="saved_with_placeholder">%1$s kaydedildi</string>
+    <string name="error_cannot_change_settings_frozen">Donmuş durumda ayar değiştirilemez!</string>
+    <string name="expected_diameter">Ortalama Cap</string>
+    <string name="maximum_diameter_expected">Çap üst limit %1$f cm</string>
+    <string name="last_saved_filename">Son kayıt: %1$s</string>
+    <string name="nothing_saved_yet">Henüz kayıt yapılmadı</string>
 </resources>

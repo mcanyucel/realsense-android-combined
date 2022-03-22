@@ -6,12 +6,15 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 
+import com.google.android.material.slider.Slider;
 import com.intel.realsense.librealsense.Align;
 import com.intel.realsense.librealsense.Colorizer;
 import com.intel.realsense.librealsense.Config;
@@ -22,6 +25,7 @@ import com.intel.realsense.librealsense.Extension;
 import com.intel.realsense.librealsense.Frame;
 import com.intel.realsense.librealsense.FrameReleaser;
 import com.intel.realsense.librealsense.FrameSet;
+import com.intel.realsense.librealsense.HoleFillingFilter;
 import com.intel.realsense.librealsense.Option;
 import com.intel.realsense.librealsense.Pipeline;
 import com.intel.realsense.librealsense.PipelineProfile;
@@ -55,10 +59,11 @@ public class MaskAndCloudActivity extends AppCompatActivity {
     private final String TAG = "MaskAndCloudActivity";
 
     private ImageView imageViewColor;
-    private ImageView imageViewForeground;
     private TextView txtDistance;
     private TextView txtDiameter;
-    private TextView getTxtDiameterAlt;
+    private TextView txtDiameterAlt;
+    private TextView txtMaxDiameter;
+    private TextView txtLastSaved;
 
     private RsContext rsContext;
     private Pipeline pipeline;
@@ -69,10 +74,12 @@ public class MaskAndCloudActivity extends AppCompatActivity {
     private boolean shouldProcess = false;
     private boolean isFrozen = false;
     private boolean shouldSave = false;
+    private boolean shouldFillHoles = false;
 
     private Align align;
     private Pointcloud pointcloud;
     private Colorizer colorizer;
+    private HoleFillingFilter holeFillingFilter;
 
     private String saveDirectoryPathImage;
     private String saveDirectoryPathDocument;
@@ -80,6 +87,9 @@ public class MaskAndCloudActivity extends AppCompatActivity {
     private float lastDiameterAlt = Float.NaN;
     private float lastDistance = -1;
     private final DecimalFormat decimalFormat = new DecimalFormat("#.##", new DecimalFormatSymbols(Locale.US));
+    // the differential limit; any values outside center +- delta will be erased
+    private double maxExpectedDiameter = 0.75; // meters
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,13 +114,43 @@ public class MaskAndCloudActivity extends AppCompatActivity {
 
         appContext = getApplicationContext();
         imageViewColor = findViewById(R.id.imgMaskAndCloudColor);
-        imageViewForeground = findViewById(R.id.imgMaskAndCloudForeground);
         txtDiameter = findViewById(R.id.txtMaskAndCloudDiameter);
         txtDistance = findViewById(R.id.txtMaskAndCloudDistance);
-        getTxtDiameterAlt = findViewById(R.id.txtMaskAndCloudDiameterAlt);
+        txtDiameterAlt = findViewById(R.id.txtMaskAndCloudDiameterAlt);
+        txtMaxDiameter = findViewById(R.id.txtActivityMaskAndCloudExpectedDiameter);
+        txtLastSaved = findViewById(R.id.txtMaskAndCloudLastSaved);
+        SwitchCompat swhFillHoles = findViewById(R.id.swhMaskAndCloudFillHoles);
+        Slider sldMaxExpectedDiameter = findViewById(R.id.sldMaskAndCloudExpectedDiameter);
+
+        updateLabel(txtMaxDiameter, R.string.maximum_diameter_expected, (float) maxExpectedDiameter * 100);
 
         imageViewColor.setOnClickListener(view -> processImage());
-        imageViewForeground.setOnClickListener(view -> saveImage());
+//        imageViewForeground.setOnClickListener(view -> saveImage());
+        swhFillHoles.setOnCheckedChangeListener((compoundButton, b) -> {
+            if (isFrozen && b) {
+                Toast.makeText(appContext, getString(R.string.error_cannot_change_settings_frozen), Toast.LENGTH_SHORT).show();
+                compoundButton.setChecked(false);
+            }
+            else
+                shouldFillHoles = b;
+        });
+
+
+        sldMaxExpectedDiameter.addOnChangeListener((slider, value, fromUser) -> {
+            if (fromUser) {
+                if (isFrozen) {
+                    slider.setValue((float) maxExpectedDiameter * 100);
+                    updateLabel(txtMaxDiameter, R.string.error_cannot_change_settings_frozen);
+                }
+                else {
+                    maxExpectedDiameter = value / 100.0;
+                    updateLabel(txtMaxDiameter, R.string.maximum_diameter_expected, value);
+                }
+            }
+        });
+
+        ((Button)findViewById(R.id.btnMaskAndCloudSave)).setOnClickListener(view -> saveImage());
+
 
         initializeMats();
 
@@ -135,6 +175,18 @@ public class MaskAndCloudActivity extends AppCompatActivity {
         pipeline.close();
         align.close();
         pointcloud.close();
+        holeFillingFilter.close();
+    }
+
+    /**
+     * Updates the text on the given text view using the given string resource id which should
+     * have a single format specifier
+     * @param textView Text view instance
+     * @param resId String resource id
+     * @param value Parameter value
+     */
+    private void updateLabel(final TextView textView, final int resId, final String value) {
+        runOnUiThread(()->textView.setText(getString(resId, value)));
     }
 
     /**
@@ -199,7 +251,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                     saveRecord(CvHelpers.simpleDateFormat.format(date), lastDistance);
 
                     shouldSave = false;
-                    Toast.makeText(appContext, getString(R.string.saved_with_placeholder, CvHelpers.simpleDateFormat.format(date)), Toast.LENGTH_LONG).show();
+                    updateLabel(txtLastSaved, R.string.last_saved_filename, CvHelpers.simpleDateFormat.format(date));
                 }
                 handler.post(mStreaming);
                 return;
@@ -230,7 +282,16 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                     if (shouldProcess) {
                         // get grayscale depth image
                         colorizer.setValue(Option.COLOR_SCHEME, 2);
-                        Frame bwDepthFrame = depthFrame.applyFilter(colorizer).releaseWith(frameReleaser);
+                        Frame bwDepthFrame;
+                        if (shouldFillHoles)
+                            bwDepthFrame = depthFrame
+                                    .applyFilter(holeFillingFilter)
+                                    .applyFilter(colorizer)
+                                    .releaseWith(frameReleaser);
+                        else
+                            bwDepthFrame = depthFrame
+                                    .applyFilter(colorizer)
+                                    .releaseWith(frameReleaser);
 
                         Mat bwDepthMatMaster = CvHelpers.VideoFrame2Mat(bwDepthFrame.as(Extension.VIDEO_FRAME));
                         Imgproc.cvtColor(bwDepthMatMaster, bwDepthMatMaster, Imgproc.COLOR_BGR2GRAY);
@@ -240,8 +301,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                         int centerX = depthFrame.getWidth() / 2;
                         double du = bwDepthMatMaster.get(bwDepthMatMaster.rows() / 2, bwDepthMatMaster.cols() / 2)[0];
 
-                        // the differential limit; any values outside center +- delta will be erased
-                        final double maxExpectedDiameter = 0.5; // meters
+
                         // scale maxExpectedDiameter to 8bit pixel values based on distance
                         double delta = du * maxExpectedDiameter / distance / 2;
 
@@ -389,17 +449,20 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                         }
 
                         if (Float.isNaN(leftX) || Float.isNaN(rightX)) {
-                            updateLabel(getTxtDiameterAlt, R.string.failed_to_find_tree_edge);
+                            updateLabel(txtDiameterAlt, R.string.failed_to_find_tree_edge);
                         }
                         else {
                             float diameterRaw = (rightX - leftX) * 100; // centimeters
                             lastDiameterAlt = diameterRaw;
-                            updateLabel(getTxtDiameterAlt, R.string.diameter_with_placeholder, diameterRaw);
+                            updateLabel(txtDiameterAlt, R.string.diameter_with_placeholder, diameterRaw);
                         }
 
                         try {
+
                             Bitmap bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(foregroundMat);
-                            runOnUiThread(()->imageViewForeground.setImageBitmap(bitmap));
+                            runOnUiThread(()->imageViewColor.setImageBitmap(bitmap));
+
+
                             shouldProcess = false;
                             isFrozen = true;
                         }
@@ -408,12 +471,14 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                         }
                     }
                     // Draw cross-hair to colorMat and update UI
-                    int rows = colorMat.rows();
-                    int cols = colorMat.cols();
-                    Imgproc.line(colorMat, new Point(0, rows/2f), new Point(cols, rows/2f), new Scalar(255,0,0), 3);
-                    Imgproc.line(colorMat, new Point(cols/2f, 0), new Point(cols/2f, rows), new Scalar(255,0,0), 3);
-                    Bitmap colorBitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMat);
-                    runOnUiThread(() -> imageViewColor.setImageBitmap(colorBitmap));
+                    if (!isFrozen) {
+                        int rows = colorMat.rows();
+                        int cols = colorMat.cols();
+                        Imgproc.line(colorMat, new Point(0, rows/2f), new Point(cols, rows/2f), new Scalar(255,0,0), 3);
+                        Imgproc.line(colorMat, new Point(cols/2f, 0), new Point(cols/2f, rows), new Scalar(255,0,0), 3);
+                        Bitmap colorBitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMat);
+                        runOnUiThread(() -> imageViewColor.setImageBitmap(colorBitmap));
+                    }
                 }
                 handler.post(mStreaming);
             }
@@ -428,12 +493,13 @@ public class MaskAndCloudActivity extends AppCompatActivity {
      * @param lastFileName Last time-stamp that is used to save the image files
      * @param distance Last measured distance
      */
-    private void saveRecord(String lastFileName, float distance) {
+    private void saveRecord(String lastFileName, final float distance) {
         File recordsFile = new File(saveDirectoryPathDocument, "records.csv");
         try (FileWriter fileWriter = new FileWriter(recordsFile, true)) {
             fileWriter.append(
-                    String.format(Locale.US, "%s,%s,%s,%s\r\n"
-                            ,lastFileName,
+                    String.format(Locale.US, "%s,%s,%s,%s,%s\r\n",
+                            lastFileName,
+                            decimalFormat.format(maxExpectedDiameter),
                             decimalFormat.format(distance),
                             decimalFormat.format(lastDiameter),
                             decimalFormat.format(lastDiameterAlt)));
@@ -467,6 +533,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
         align = new Align(StreamType.COLOR); // TODO align to depth or color?
         pointcloud = new Pointcloud(StreamType.DEPTH);
         colorizer = new Colorizer();
+        holeFillingFilter = new HoleFillingFilter();
 
         try (DeviceList list = rsContext.queryDevices()) {
             if (list.getDeviceCount() > 0) {
@@ -524,9 +591,9 @@ public class MaskAndCloudActivity extends AppCompatActivity {
     private synchronized void processImage() {
         if (isFrozen) {
             isFrozen = false;
-            imageViewForeground.setImageDrawable(null);
             updateLabel(txtDiameter, R.string.waiting_for_process);
-            updateLabel(getTxtDiameterAlt, R.string.waiting_for_process);
+            updateLabel(txtDiameterAlt, R.string.waiting_for_process);
+            updateLabel(txtLastSaved, R.string.nothing_saved_yet);
         }
         else {
             shouldProcess = true;

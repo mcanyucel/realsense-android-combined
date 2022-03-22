@@ -58,17 +58,62 @@
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.5" />
 
-    <ImageView
-        android:id="@+id/imgMaskAndCloudForeground"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:contentDescription="@string/color_image_foreground"
-        android:scaleType="fitCenter"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/swhMaskAndCloudFillHoles"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="@string/shouldFillHoles"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/txtMaskAndCloudDiameterAlt" />
 
+    <TextView
+        android:id="@+id/txtActivityMaskAndCloudExpectedDiameter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/maximum_diameter_expected"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sldMaskAndCloudExpectedDiameter" />
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/sldMaskAndCloudExpectedDiameter"
+        android:layout_width="411dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:contentDescription="@string/expected_diameter"
+        android:stepSize="1"
+        android:value="50"
+        android:valueFrom="10"
+        android:valueTo="150"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/swhMaskAndCloudFillHoles" />
+
+    <Button
+        android:id="@+id/btnMaskAndCloudSave"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="8dp"
+        android:text="@string/save"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/txtActivityMaskAndCloudExpectedDiameter" />
+
+    <TextView
+        android:id="@+id/txtMaskAndCloudLastSaved"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:text="@string/nothing_saved_yet"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnMaskAndCloudSave" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
