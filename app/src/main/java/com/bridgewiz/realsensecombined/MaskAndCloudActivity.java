@@ -127,9 +127,9 @@ public class MaskAndCloudActivity extends AppCompatActivity {
         imageViewColor.setOnClickListener(view -> processImage());
 //        imageViewForeground.setOnClickListener(view -> saveImage());
         swhFillHoles.setOnCheckedChangeListener((compoundButton, b) -> {
-            if (isFrozen && b) {
+            if (isFrozen) {
                 Toast.makeText(appContext, getString(R.string.error_cannot_change_settings_frozen), Toast.LENGTH_SHORT).show();
-                compoundButton.setChecked(false);
+                compoundButton.setChecked(!b);
             }
             else
                 shouldFillHoles = b;
@@ -269,6 +269,8 @@ public class MaskAndCloudActivity extends AppCompatActivity {
 
                     colorMat = CvHelpers.VideoFrame2Mat(colorFrame);
 
+                    Mat colorMatWithBorders = colorMat.clone();
+
 
                     // get the depth at the center in meters
                     DepthFrame depthFrame = processedFrameSet
@@ -326,6 +328,10 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                         int count = cloudPoints.getCount();
                         Log.d(TAG, "run: Number of vertices in point cloud: " + count);
 
+                        // y coordinates for start and end of the tree edge lines
+                        int edgeStartY = (int) (colorMatWithBorders.rows() * 0.3);
+                        int edgeEndY = edgeStartY * 2;
+
 
                         float[] vertices = cloudPoints.getVertices();
                         /* for indexing of vertices with respect to depth image, see
@@ -370,12 +376,6 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                             }
                         }
 
-                        // draw the diameter line onto the foreground mat
-                        Imgproc.line(foregroundMat,
-                                new Point(leftIndex, centerY),
-                                new Point(rightIndex, centerY),
-                                new Scalar(255, 0, 0),
-                                4);
 
                         int vertexYIndex = centerY * depthFrame.getWidth();
 
@@ -383,6 +383,13 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                              updateLabel(txtDiameter, R.string.failed_to_find_tree_edge);
                         }
                         else {
+                            // draw the diameter line onto the foreground mat
+//                        Imgproc.line(foregroundMat,
+//                                new Point(leftIndex, centerY),
+//                                new Point(rightIndex, centerY),
+//                                new Scalar(255, 0, 0),
+//                                4);
+//
                             int leftEdgeVertexIndex = (vertexYIndex + leftIndex) * 3;
                             int rightEdgeVertexIndex = (vertexYIndex + rightIndex) * 3;
 
@@ -403,6 +410,19 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                             float diameterRaw = (rightEdgeX - leftEdgeX) * 100; // centimeters
                             lastDiameter = diameterRaw;
                             updateLabel(txtDiameter, R.string.diameter_with_placeholder, diameterRaw);
+
+                            // draw the tree edge lines from approach 1 onto the colorMatWithBorders
+                            // using white color
+                            Imgproc.line(colorMatWithBorders,
+                                    new Point(leftIndex, edgeStartY),
+                                    new Point(leftIndex, edgeEndY),
+                                    Scalar.all(255),
+                                    2);
+                            Imgproc.line(colorMatWithBorders,
+                                    new Point(rightIndex, edgeStartY),
+                                    new Point(rightIndex, edgeEndY),
+                                    Scalar.all(255),
+                                    2);
                         }
 
                         /*
@@ -419,6 +439,8 @@ public class MaskAndCloudActivity extends AppCompatActivity {
 
                         float leftX = Float.NaN;
                         float rightX = Float.NaN;
+                        int leftXIndex = 0;
+                        int rightXIndex = 0;
                         // seek half of image width
                         /* NOTE
                          * Having branches inside loops is suboptimal, however, this loop is
@@ -430,8 +452,10 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                             if (Float.isNaN(leftX)) {
                                 int leftZIndex = (midIndex - 1) - (i * 3);
                                 float leftZ = vertices[leftZIndex];
+                                // if leftZ is zero, that
                                 if (leftZ == 0 || leftZ < thresholdNearZ || leftZ > thresholdFarZ) {
-                                    int leftXIndex = leftZIndex + 1; // remember the order is x,y,z,x,y,z,x,y,z,x...
+
+                                    leftXIndex = leftZIndex + 1; // remember the order is x,y,z,x,y,z,x,y,z,x...
                                     leftX = vertices[leftXIndex];
                                 }
                             }
@@ -440,7 +464,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                                 int rightZIndex = (midIndex + 2) + (i * 3);
                                 float rightZ = vertices[rightZIndex];
                                 if (rightZ == 0 || rightZ < thresholdNearZ || rightZ > thresholdFarZ) {
-                                    int rightXIndex = rightZIndex - 5; // remember the order is x,y,z,x,y,z,x,y,z,x...
+                                    rightXIndex = rightZIndex - 5; // remember the order is x,y,z,x,y,z,x,y,z,x...
                                     rightX = vertices[rightXIndex];
                                 }
                             }
@@ -455,11 +479,24 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                             float diameterRaw = (rightX - leftX) * 100; // centimeters
                             lastDiameterAlt = diameterRaw;
                             updateLabel(txtDiameterAlt, R.string.diameter_with_placeholder, diameterRaw);
+
+                            // draw the tree edge lines from approach 2 onto the colorMatWithBorders
+                            // using blue color
+                            Imgproc.line(colorMatWithBorders,
+                                    new Point((leftXIndex / 3f) % depthFrame.getWidth(), edgeStartY),
+                                    new Point((leftXIndex / 3f) % depthFrame.getWidth(), edgeEndY),
+                                    new Scalar(0,0,255),
+                                    2);
+                            Imgproc.line(colorMatWithBorders,
+                                    new Point((rightXIndex / 3f) % depthFrame.getWidth(), edgeStartY),
+                                    new Point((rightXIndex / 3f) % depthFrame.getWidth(), edgeEndY),
+                                    new Scalar(0,0,255),
+                                    2);
                         }
 
                         try {
 
-                            Bitmap bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(foregroundMat);
+                            Bitmap bitmap = CvHelpers.ColorMat2BitmapNoChannelSwap(colorMatWithBorders);
                             runOnUiThread(()->imageViewColor.setImageBitmap(bitmap));
 
 
