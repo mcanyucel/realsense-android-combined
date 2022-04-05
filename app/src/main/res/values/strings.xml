@@ -35,4 +35,5 @@
     <string name="last_saved_filename">Son kayıt: %1$s</string>
     <string name="nothing_saved_yet">Henüz kayıt yapılmadı</string>
     <string name="toggle">Değiştir</string>
+    <string name="save_header_failed">Kayıt Dosyası Başlıkları Kaydedilemedi!</string>
 </resources>

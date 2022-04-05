@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -64,6 +63,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
     private TextView txtDiameterAlt;
     private TextView txtMaxDiameter;
     private TextView txtLastSaved;
+    private TextView txtDiameterAlt3;
 
     private RsContext rsContext;
     private Pipeline pipeline;
@@ -86,6 +86,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
     private String saveDirectoryPathDocument;
     private float lastDiameter = Float.NaN;
     private float lastDiameterAlt = Float.NaN;
+    private float lastDiameterAlt3 = Float.NaN;
     private float lastDistance = -1;
     private final DecimalFormat decimalFormat = new DecimalFormat("#.##", new DecimalFormatSymbols(Locale.US));
     // the differential limit; any values outside center +- delta will be erased
@@ -118,6 +119,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
         txtDiameter = findViewById(R.id.txtMaskAndCloudDiameter);
         txtDistance = findViewById(R.id.txtMaskAndCloudDistance);
         txtDiameterAlt = findViewById(R.id.txtMaskAndCloudDiameterAlt);
+        txtDiameterAlt3 = findViewById(R.id.txtMaskAndCloudDiameterAlt3);
         txtMaxDiameter = findViewById(R.id.txtActivityMaskAndCloudExpectedDiameter);
         txtLastSaved = findViewById(R.id.txtMaskAndCloudLastSaved);
         SwitchCompat swhFillHoles = findViewById(R.id.swhMaskAndCloudFillHoles);
@@ -150,8 +152,8 @@ public class MaskAndCloudActivity extends AppCompatActivity {
             }
         });
 
-        ((Button)findViewById(R.id.btnMaskAndCloudSave)).setOnClickListener(view -> saveImage());
-        ((Button)findViewById(R.id.btnMaskAndCloudToggle)).setOnClickListener(view -> toggleResultImage());
+        findViewById(R.id.btnMaskAndCloudSave).setOnClickListener(view -> saveImage());
+        findViewById(R.id.btnMaskAndCloudToggle).setOnClickListener(view -> toggleResultImage());
 
 
         initializeMats();
@@ -288,6 +290,8 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                     lastDistance = distance;
                      updateLabel(txtDistance, R.string.distance_with_placeholder, distance);
 
+
+
                     if (shouldProcess) {
                         // get grayscale depth image
                         colorizer.setValue(Option.COLOR_SCHEME, 2);
@@ -352,12 +356,13 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                         /*
                          * Dev-test: the following code gets the middle distance from point cloud
                          * to compare it with the distance obtained above
+
+                        int midIndex = (centerY * depthFrame.getWidth() + centerX) * 3;
+                        float x = vertices[midIndex];
+                        float y = vertices[midIndex + 1];
+                        float z = vertices[midIndex + 2];
+                        Log.d(TAG, String.format("run: Cloud points coordinates: %s %s %s", x, y, z));
                          */
-//                        int midIndex = (centerY * depthFrame.getWidth() + centerX) * 3;
-//                        float x = vertices[midIndex];
-//                        float y = vertices[midIndex + 1];
-//                        float z = vertices[midIndex + 2];
-//                        Log.d(TAG, String.format("run: Cloud points coordinates: %s %s %s", x, y, z));
 
                         /* APPROACH 1
                          * Calculate tree edges from the foreground image, then use these edge
@@ -390,13 +395,6 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                              updateLabel(txtDiameter, R.string.failed_to_find_tree_edge);
                         }
                         else {
-                            // draw the diameter line onto the foreground mat
-//                        Imgproc.line(foregroundMat,
-//                                new Point(leftIndex, centerY),
-//                                new Point(rightIndex, centerY),
-//                                new Scalar(255, 0, 0),
-//                                4);
-//
                             int leftEdgeVertexIndex = (vertexYIndex + leftIndex) * 3;
                             int rightEdgeVertexIndex = (vertexYIndex + rightIndex) * 3;
 
@@ -457,7 +455,7 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                         for (int i = 1; i < depthFrame.getWidth() / 2 ; i++) {
                             // left search
                             if (Float.isNaN(leftX)) {
-                                int leftZIndex = (midIndex - 1) - (i * 3);
+                                int leftZIndex = (midIndex - 1) - (i * 3); // skips first neighbor pixel but not important
                                 float leftZ = vertices[leftZIndex];
                                 // if leftZ is zero, that
                                 if (leftZ == 0 || leftZ < thresholdNearZ || leftZ > thresholdFarZ) {
@@ -487,8 +485,33 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                             lastDiameterAlt = diameterRaw;
                             updateLabel(txtDiameterAlt, R.string.diameter_with_placeholder, diameterRaw);
 
+                            /* APPROACH 3:
+                             * The same with approach 2, but the tree is assumed to start
+                             * with the first pixel of the black zone from the center, rather than
+                             * the first pixel before/after the black zone
+                             * i.e. the diameter calculated in approach 2 is extended by 1 vertex at each side.
+                             * Problem: The new edge vertices are black, so they have no x and y coordinates.
+                             * Solution: Calculate the deltaX between the approach 2 edge vertex and its
+                             * neighbor towards center, then assume it is valid for the distance
+                             * between the approach 2 edge vertex and its neighbor away from the center
+                             * (approach 3 edge vertex).
+                             * */
+
+                            int leftXNeighborIndex = leftXIndex + 3;
+                            float leftXNeighborDelta = Math.abs(vertices[leftXNeighborIndex] - vertices[leftXIndex]);
+                            int rightXNeighborIndex = rightXIndex - 3;
+                            float rightXNeighborDelta = Math.abs(vertices[rightXNeighborIndex] - vertices[rightXIndex]);
+
+                            Log.d(TAG, String.format("run: Right And Left X NeighborDeltas: %f %f", rightXNeighborDelta, leftXNeighborDelta));
+
+                            float diameterRaw3 = ((rightX + rightXNeighborDelta) - (leftX - leftXNeighborDelta)) * 100; // centimeters
+                            updateLabel(txtDiameterAlt3, R.string.diameter_with_placeholder, diameterRaw3);
+
+
                             // draw the tree edge lines from approach 2 onto the colorMatWithBorders
-                            // using blue color
+                            // using blue color.
+                            // we are not drawing results of approach 3 because it is just 1 px shifted
+                            // values of approach 2
                             Imgproc.line(colorMatWithBorders,
                                     new Point((leftXIndex / 3f) % depthFrame.getWidth(), edgeStartY),
                                     new Point((leftXIndex / 3f) % depthFrame.getWidth(), edgeEndY),
@@ -500,6 +523,10 @@ public class MaskAndCloudActivity extends AppCompatActivity {
                                     new Scalar(0,0,255),
                                     2);
                         }
+
+
+
+
 
                         try {
                             Bitmap bitmap;
@@ -562,14 +589,25 @@ public class MaskAndCloudActivity extends AppCompatActivity {
      */
     private void saveRecord(String lastFileName, final float distance) {
         File recordsFile = new File(saveDirectoryPathDocument, "records.csv");
+        if (!recordsFile.exists()){
+            try (FileWriter fw = new FileWriter(recordsFile, true)) {
+                fw.append("Last File Name, Max Expected Diameter (m), Distance (m), Should Fill Holes, Last Diameter (cm), Last Diameter Alt2 (cm), Last Diameter Alt3 (cm)\r\n");
+            }
+            catch (IOException e) {
+                Log.e(TAG, "saveRecord: Failed to save record header", e);
+                Toast.makeText(appContext, getString(R.string.save_header_failed), Toast.LENGTH_SHORT).show();
+            }
+        }
         try (FileWriter fileWriter = new FileWriter(recordsFile, true)) {
             fileWriter.append(
-                    String.format(Locale.US, "%s,%s,%s,%s,%s\r\n",
+                    String.format(Locale.US, "%s,%s,%s,%s,%s,%s,%s\r\n",
                             lastFileName,
                             decimalFormat.format(maxExpectedDiameter),
                             decimalFormat.format(distance),
+                            shouldFillHoles,
                             decimalFormat.format(lastDiameter),
-                            decimalFormat.format(lastDiameterAlt)));
+                            decimalFormat.format(lastDiameterAlt),
+                            decimalFormat.format(lastDiameterAlt3)));
         }
         catch (IOException e) {
             Log.e(TAG, "saveRecord: Failed to save record", e);
